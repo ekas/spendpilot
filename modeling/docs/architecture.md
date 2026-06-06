@@ -37,10 +37,11 @@ The manager receives the frozen specialist reports and:
 - prepares a bounded summary for a human reviewer;
 - preserves every specialist score and evidence reference unchanged.
 
-Deterministic consolidation remains authoritative. An optional pretrained
-4-bit Phi-4-mini-instruct adapter translates structured reports into
-reviewer-facing language and proposes feedback targets. Schema validation and
-Manager allowlists reject malformed or unauthorized output.
+Deterministic consolidation remains authoritative. An optional OpenRouter
+assistant translates structured reports into reviewer-facing language and
+proposes feedback targets. The free router's selected model and request ID are
+stored with the narrative. Schema validation and Manager allowlists reject
+malformed or unauthorized output.
 
 ### Policy engine
 

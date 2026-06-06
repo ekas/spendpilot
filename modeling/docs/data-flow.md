@@ -51,8 +51,10 @@ The manager validates the report set and emits:
 
 The manager cannot issue a final decision.
 
-When enabled, Phi receives only compact structured reports, deltas, reason
-codes, opaque evidence references, and aggregate benchmark context. Its
+When enabled, OpenRouter receives only compact structured reports, deltas,
+reason codes, opaque evidence references, and aggregate benchmark context. The
+request requires JSON support, denies data-collecting providers, requests
+zero-data-retention routing, and stores the actual selected model. Its
 narrative is stored separately from deterministic consolidation.
 
 ## 5. Policy Evaluation

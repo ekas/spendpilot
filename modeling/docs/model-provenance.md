@@ -45,14 +45,20 @@ The data are historical, sampled from 1973 to 1975, oversample bad credits,
 contain a transformed amount field, and do not match SpendPilot inputs. The
 benchmark never creates applicant-level SpendPilot scores.
 
-## Phi Manager Assistant
+## OpenRouter Manager Assistant
 
-`mlx-community/Phi-4-mini-instruct-4bit` is used as a pretrained model without
-fine-tuning. It runs one request at a time with at most 2,048 input tokens, 256
-output tokens, and deterministic sampling.
+The default hosted route is `openrouter/free`. OpenRouter may select a
+different free model for each request, so the returned model ID and request ID
+are attached to every accepted Manager narrative. Requests use temperature
+zero, a 256-token output limit, and JSON response mode.
 
-Phi receives no applicant name, raw document, unrestricted feedback comment,
-or hidden chain-of-thought. It returns schema-validated JSON for:
+The provider preferences require parameter support, deny endpoints that collect
+data, and request zero-data-retention routing. If no free endpoint can satisfy
+those requirements, the assistant fails closed to deterministic Manager
+behavior.
+
+OpenRouter receives no applicant name, raw document, unrestricted feedback
+comment, or hidden chain-of-thought. It returns schema-validated JSON for:
 
 - a reviewer-facing narrative;
 - disagreement explanation and review focus;
@@ -60,8 +66,8 @@ or hidden chain-of-thought. It returns schema-validated JSON for:
 
 The Manager validates feedback identifiers, mandatory targets, and allowed
 specialists. Invalid JSON, timeouts, missing targets, and unauthorized targets
-fall back to deterministic behavior. Phi cannot change snapshots, reports,
-scores, policy rules, or decisions.
+fall back to deterministic behavior. The hosted model cannot change snapshots,
+reports, scores, policy rules, or decisions.
 
 ## Local Artifacts
 
@@ -71,7 +77,6 @@ Generated content remains ignored by Git:
 data/raw/                         downloaded benchmark source
 artifacts/models/                 XGBoost, calibration, and manifests
 artifacts/reports/                benchmark and evaluation reports
-models/phi/                       pretrained Phi weights
 ```
 
 Committed code, configuration, checksums, seeds, schemas, and tests are

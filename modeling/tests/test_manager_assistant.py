@@ -8,7 +8,10 @@ from spendpilot.agents import (
     ManagerAgent,
     ManagerAssistantStatus,
 )
-from spendpilot.assistants.phi import PhiManagerAssistant
+from spendpilot.assistants.structured import (
+    JSONCompletionResult,
+    StructuredManagerAssistant,
+)
 from spendpilot.models import ModelOutput, StaticModelAdapter
 from spendpilot.schemas import (
     AgentId,
@@ -28,17 +31,22 @@ class FakeJSONClient:
         self.responses = responses
         self.requests: list[dict[str, object]] = []
 
-    def complete_json(self, **kwargs) -> str:
+    def complete_json(self, **kwargs) -> JSONCompletionResult:
         self.requests.append(kwargs)
         response = self.responses.pop(0)
         if response == "TIMEOUT":
-            raise TimeoutError("local model timed out")
-        return response
+            raise TimeoutError("hosted model timed out")
+        return JSONCompletionResult(
+            content=response,
+            provider="test-provider",
+            model="test/model",
+            request_id="request_1",
+        )
 
 
 def make_case() -> CaseSnapshot:
     return CaseSnapshot(
-        case_id="case_phi",
+        case_id="case_assistant",
         snapshot_id="snapshot_1",
         applicant_ref="applicant_token",
         product=CreditProduct.PERSONAL_LOAN,
@@ -80,10 +88,10 @@ def verified_feedback(related_report_id: str) -> FeedbackEvent:
 
     return FeedbackEvent(
         feedback_id="feedback_1",
-        case_id="case_phi",
+        case_id="case_assistant",
         source=FeedbackSource.REVIEWER,
         feedback_type=FeedbackType.DATA_CORRECTION,
-        rationale="Raw reviewer comment must not enter Phi.",
+        rationale="Raw reviewer comment must not enter the hosted model.",
         evidence_refs=("document:1",),
         related_report_ids=(related_report_id,),
         submitter_ref="reviewer_1",
@@ -93,7 +101,7 @@ def verified_feedback(related_report_id: str) -> FeedbackEvent:
     )
 
 
-def test_phi_narrative_is_separate_from_deterministic_manager_result() -> None:
+def test_narrative_is_separate_from_deterministic_manager_result() -> None:
     client = FakeJSONClient(
         [
             json.dumps(
@@ -101,13 +109,13 @@ def test_phi_narrative_is_separate_from_deterministic_manager_result() -> None:
                     "summary": "Specialists disagree on affordability.",
                     "disagreement_explanation": "Affordability is the outlier.",
                     "reviewer_focus": ["Verify income and expenses."],
-                    "limitations": ["Phi did not make the decision."],
+                    "limitations": ["The hosted model did not decide."],
                 }
             )
         ]
     )
     manager = ManagerAgent(
-        assistant=PhiManagerAssistant(client),
+        assistant=StructuredManagerAssistant(client),
         benchmark_context=BenchmarkContext(
             dataset_name="South German Credit",
             dataset_version="UCI-2020",
@@ -122,16 +130,19 @@ def test_phi_narrative_is_separate_from_deterministic_manager_result() -> None:
     assert report.proposed_action is Recommendation.REFER
     assert report.disagreement is True
     assert report.narrative is not None
+    assert report.narrative.assistant_provider == "test-provider"
+    assert report.narrative.assistant_model == "test/model"
+    assert report.narrative.assistant_request_id == "request_1"
     assert report.assistant_status is ManagerAssistantStatus.COMPLETED
     payload = client.requests[0]["user"]
     assert "applicant_token" not in payload
     assert "Raw reviewer comment" not in payload
 
 
-def test_malformed_or_timed_out_phi_response_falls_back() -> None:
+def test_malformed_or_timed_out_response_falls_back() -> None:
     for response in ("not-json", "TIMEOUT"):
         manager = ManagerAgent(
-            assistant=PhiManagerAssistant(FakeJSONClient([response]))
+            assistant=StructuredManagerAssistant(FakeJSONClient([response]))
         )
 
         report = manager.consolidate(make_reports())
@@ -141,7 +152,7 @@ def test_malformed_or_timed_out_phi_response_falls_back() -> None:
         assert report.proposed_action is Recommendation.REFER
 
 
-def test_phi_routing_is_validated_and_raw_rationale_is_excluded() -> None:
+def test_routing_is_validated_and_raw_rationale_is_excluded() -> None:
     reports = make_reports()
     client = FakeJSONClient(
         [
@@ -157,7 +168,7 @@ def test_phi_routing_is_validated_and_raw_rationale_is_excluded() -> None:
             )
         ]
     )
-    manager = ManagerAgent(assistant=PhiManagerAssistant(client))
+    manager = ManagerAgent(assistant=StructuredManagerAssistant(client))
     feedback = verified_feedback(reports[1].report_id)
 
     routed = manager.route_feedback(
@@ -173,7 +184,7 @@ def test_phi_routing_is_validated_and_raw_rationale_is_excluded() -> None:
     assert "Raw reviewer comment" not in client.requests[0]["user"]
 
 
-def test_unauthorized_phi_target_uses_deterministic_fallback() -> None:
+def test_unauthorized_target_uses_deterministic_fallback() -> None:
     reports = make_reports()
     client = FakeJSONClient(
         [
@@ -186,7 +197,7 @@ def test_unauthorized_phi_target_uses_deterministic_fallback() -> None:
             )
         ]
     )
-    manager = ManagerAgent(assistant=PhiManagerAssistant(client))
+    manager = ManagerAgent(assistant=StructuredManagerAssistant(client))
     feedback = verified_feedback(reports[1].report_id)
 
     routed = manager.route_feedback(

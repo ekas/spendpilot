@@ -1,13 +1,11 @@
-"""Pretrained local Phi assistant with strict JSON-only interfaces."""
+"""Structured language-model assistance with strict JSON-only interfaces."""
 
 from __future__ import annotations
 
 import json
-import threading
-from pathlib import Path
-from typing import Protocol
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Protocol
 
-from spendpilot.agents.manager import ManagerReport
 from spendpilot.schemas.agent_report import AgentId, AgentReport
 from spendpilot.schemas.feedback import FeedbackEvent
 from spendpilot.schemas.modeling import (
@@ -16,14 +14,26 @@ from spendpilot.schemas.modeling import (
     ManagerNarrative,
 )
 
+if TYPE_CHECKING:
+    from spendpilot.agents.manager import ManagerReport
 
-PHI_REPOSITORY = "mlx-community/Phi-4-mini-instruct-4bit"
-MAX_INPUT_TOKENS = 2_048
+
+MAX_INPUT_CHARACTERS = 12_000
 MAX_OUTPUT_TOKENS = 256
 
 
+@dataclass(frozen=True)
+class JSONCompletionResult:
+    """Content and provider provenance returned by a hosted model."""
+
+    content: str
+    provider: str
+    model: str
+    request_id: str | None = None
+
+
 class JSONCompletionClient(Protocol):
-    """Minimum completion behavior required by the Phi assistant."""
+    """Minimum completion behavior required by the Manager assistant."""
 
     def complete_json(
         self,
@@ -31,53 +41,12 @@ class JSONCompletionClient(Protocol):
         system: str,
         user: str,
         max_output_tokens: int,
-    ) -> str:
-        """Return one JSON object as text."""
+    ) -> JSONCompletionResult:
+        """Return one JSON object plus immutable provider metadata."""
 
 
-class MLXLocalJSONClient:
-    """Loads one 4-bit MLX model and serializes local requests."""
-
-    def __init__(self, model_path: Path | str) -> None:
-        from mlx_lm import load
-
-        self._model, self._tokenizer = load(str(model_path))
-        self._lock = threading.Lock()
-
-    def complete_json(
-        self,
-        *,
-        system: str,
-        user: str,
-        max_output_tokens: int = MAX_OUTPUT_TOKENS,
-    ) -> str:
-        from mlx_lm import generate
-        from mlx_lm.sample_utils import make_sampler
-
-        messages = (
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        )
-        prompt = self._tokenizer.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            tokenize=False,
-        )
-        if len(self._tokenizer.encode(prompt)) > MAX_INPUT_TOKENS:
-            raise ValueError("Phi manager input exceeds 2,048 tokens")
-        with self._lock:
-            return generate(
-                self._model,
-                self._tokenizer,
-                prompt=prompt,
-                max_tokens=min(max_output_tokens, MAX_OUTPUT_TOKENS),
-                sampler=make_sampler(temp=0.0),
-                verbose=False,
-            )
-
-
-class PhiManagerAssistant:
-    """Uses Phi for bounded explanations and feedback-routing proposals."""
+class StructuredManagerAssistant:
+    """Produces bounded explanations and feedback-routing proposals."""
 
     def __init__(self, client: JSONCompletionClient) -> None:
         self._client = client
@@ -121,7 +90,7 @@ class PhiManagerAssistant:
                 else None
             ),
         }
-        response = self._client.complete_json(
+        response = self._complete(
             system=(
                 "You explain already-computed credit model reports to a human "
                 "reviewer. Do not make a credit decision, change scores, or "
@@ -129,10 +98,18 @@ class PhiManagerAssistant:
                 "disagreement_explanation, reviewer_focus, and limitations. "
                 "Do not reveal hidden reasoning."
             ),
-            user=json.dumps(payload, separators=(",", ":")),
-            max_output_tokens=MAX_OUTPUT_TOKENS,
+            payload=payload,
         )
-        return ManagerNarrative.model_validate(_parse_json_object(response))
+        narrative = ManagerNarrative.model_validate(
+            _parse_json_object(response.content)
+        )
+        return narrative.model_copy(
+            update={
+                "assistant_provider": response.provider,
+                "assistant_model": response.model,
+                "assistant_request_id": response.request_id,
+            }
+        )
 
     def propose_feedback_routing(
         self,
@@ -157,33 +134,40 @@ class PhiManagerAssistant:
                 for report in previous_reports
             ],
         }
-        response = self._client.complete_json(
+        response = self._complete(
             system=(
                 "Route verified credit-case feedback to relevant specialist "
                 "agents. Use only allowed_targets. Do not make a decision, "
                 "change a score, or infer facts from free text. Return only "
                 "JSON with feedback_id, proposed_targets, and rationale_codes."
             ),
-            user=json.dumps(payload, separators=(",", ":")),
+            payload=payload,
+        )
+        proposal = FeedbackRoutingProposal.model_validate(
+            _parse_json_object(response.content)
+        )
+        return proposal.model_copy(
+            update={
+                "assistant_provider": response.provider,
+                "assistant_model": response.model,
+                "assistant_request_id": response.request_id,
+            }
+        )
+
+    def _complete(
+        self,
+        *,
+        system: str,
+        payload: dict[str, object],
+    ) -> JSONCompletionResult:
+        user = json.dumps(payload, separators=(",", ":"))
+        if len(system) + len(user) > MAX_INPUT_CHARACTERS:
+            raise ValueError("Manager assistant input exceeds the safe limit")
+        return self._client.complete_json(
+            system=system,
+            user=user,
             max_output_tokens=MAX_OUTPUT_TOKENS,
         )
-        return FeedbackRoutingProposal.model_validate(
-            _parse_json_object(response)
-        )
-
-
-def setup_phi_model(destination: Path | str) -> Path:
-    """Explicitly download the approved pretrained MLX model."""
-
-    from huggingface_hub import snapshot_download
-
-    path = Path(destination)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    downloaded = snapshot_download(
-        repo_id=PHI_REPOSITORY,
-        local_dir=path,
-    )
-    return Path(downloaded)
 
 
 def _parse_json_object(text: str) -> dict[str, object]:
@@ -197,5 +181,5 @@ def _parse_json_object(text: str) -> dict[str, object]:
         stripped = "\n".join(lines)
     parsed = json.loads(stripped)
     if not isinstance(parsed, dict):
-        raise ValueError("Phi response must be one JSON object")
+        raise ValueError("Manager assistant response must be one JSON object")
     return parsed

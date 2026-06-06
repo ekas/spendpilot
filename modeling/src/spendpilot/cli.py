@@ -6,11 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
-from spendpilot.assistants.phi import (
-    MLXLocalJSONClient,
-    PhiManagerAssistant,
-    setup_phi_model,
-)
+from spendpilot.assistants.openrouter import OpenRouterJSONClient
+from spendpilot.assistants.structured import StructuredManagerAssistant
 from spendpilot.benchmark import (
     download_south_german_credit,
     run_south_german_benchmark,
@@ -29,7 +26,6 @@ DEFAULT_BENCHMARK_DATA = (
 DEFAULT_BENCHMARK_REPORT = Path(
     "artifacts/reports/south_german_credit.json"
 )
-DEFAULT_PHI_PATH = Path("models/phi/Phi-4-mini-instruct-4bit")
 
 
 def main(arguments: list[str] | None = None) -> int:
@@ -61,20 +57,15 @@ def main(arguments: list[str] | None = None) -> int:
         )
         print(context.model_dump_json(indent=2))
         return 0
-    if options.command == "setup-phi":
-        print(setup_phi_model(options.destination))
-        return 0
     if options.command == "demo":
         assistant = None
-        if options.with_phi:
-            if not options.phi_path.exists():
-                parser.error(
-                    "Phi model is missing; run "
-                    "`python -m spendpilot.cli setup-phi` first"
+        if options.with_openrouter:
+            try:
+                assistant = StructuredManagerAssistant(
+                    OpenRouterJSONClient(model=options.openrouter_model)
                 )
-            assistant = PhiManagerAssistant(
-                MLXLocalJSONClient(options.phi_path)
-            )
+            except ValueError as exc:
+                parser.error(str(exc))
         results = run_sample_cases(
             options.model_root,
             assistant=assistant,
@@ -113,15 +104,12 @@ def _parser() -> argparse.ArgumentParser:
         default=DEFAULT_BENCHMARK_REPORT,
     )
 
-    setup_phi = subparsers.add_parser("setup-phi")
-    setup_phi.add_argument(
-        "--destination",
-        type=Path,
-        default=DEFAULT_PHI_PATH,
-    )
-
     demo = subparsers.add_parser("demo")
-    demo.add_argument("--with-phi", action="store_true")
+    demo.add_argument("--with-openrouter", action="store_true")
+    demo.add_argument(
+        "--openrouter-model",
+        default="openrouter/free",
+    )
     demo.add_argument(
         "--model-root",
         type=Path,
@@ -132,7 +120,6 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_BENCHMARK_REPORT,
     )
-    demo.add_argument("--phi-path", type=Path, default=DEFAULT_PHI_PATH)
     return parser
 
 

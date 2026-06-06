@@ -57,6 +57,9 @@ class ManagerNarrative(BaseModel):
     disagreement_explanation: str = Field(min_length=1)
     reviewer_focus: tuple[str, ...] = ()
     limitations: tuple[str, ...] = ()
+    assistant_provider: str | None = None
+    assistant_model: str | None = None
+    assistant_request_id: str | None = None
 
 
 class FeedbackRoutingProposal(BaseModel):
@@ -67,6 +70,9 @@ class FeedbackRoutingProposal(BaseModel):
     feedback_id: str = Field(min_length=1)
     proposed_targets: tuple[AgentId, ...] = Field(min_length=1)
     rationale_codes: tuple[str, ...] = Field(min_length=1)
+    assistant_provider: str | None = None
+    assistant_model: str | None = None
+    assistant_request_id: str | None = None
 
     @field_validator("proposed_targets", "rationale_codes")
     @classmethod

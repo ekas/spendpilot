@@ -62,8 +62,8 @@ review trigger.
   decision record.
 - All feedback-triggered rounds require human review.
 - Feedback rationale is never passed into a scoring model.
-- Phi never receives unrestricted feedback rationale and cannot expand the
-  deterministic routing allowlist.
+- OpenRouter never receives unrestricted feedback rationale and cannot expand
+  the deterministic routing allowlist.
 
 ## Outcome Governance
 
@@ -81,7 +81,7 @@ review trigger.
   on real applicants.
 - South German Credit produces aggregate research context only.
 - Dataset and artifact hashes are checked before use.
-- Model binaries, source datasets, generated reports, and Phi weights remain
+- Model binaries, source datasets, generated reports, and API keys remain
   outside Git.
-- Phi output may fail closed to deterministic Manager behavior without
-  interrupting policy evaluation.
+- Hosted-model output may fail closed to deterministic Manager behavior
+  without interrupting policy evaluation.

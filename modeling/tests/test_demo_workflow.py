@@ -1,7 +1,10 @@
 import json
 
 from spendpilot.agents import ManagerAssistantStatus
-from spendpilot.assistants.phi import PhiManagerAssistant
+from spendpilot.assistants.structured import (
+    JSONCompletionResult,
+    StructuredManagerAssistant,
+)
 from spendpilot.cli import main
 from spendpilot.demo import run_sample_cases
 from spendpilot.schemas import AgentId, DecisionAction
@@ -12,15 +15,22 @@ from spendpilot.training import (
 
 
 class NarrativeClient:
-    def complete_json(self, **kwargs) -> str:
+    def complete_json(self, **kwargs) -> JSONCompletionResult:
         del kwargs
-        return json.dumps(
-            {
-                "summary": "Reports were summarized for human review.",
-                "disagreement_explanation": "Recommendations are preserved.",
-                "reviewer_focus": ["Review principal reason codes."],
-                "limitations": ["Phi has no decision authority."],
-            }
+        return JSONCompletionResult(
+            content=json.dumps(
+                {
+                    "summary": "Reports were summarized for human review.",
+                    "disagreement_explanation": "Recommendations are preserved.",
+                    "reviewer_focus": ["Review principal reason codes."],
+                    "limitations": [
+                        "The hosted model has no decision authority."
+                    ],
+                }
+            ),
+            provider="test-provider",
+            model="test/model",
+            request_id="request_demo",
         )
 
 
@@ -49,7 +59,7 @@ def test_three_backend_samples_run_through_real_specialists(tmp_path) -> None:
     assert results[2].decision.finalized is False
 
 
-def test_phi_narrative_cannot_change_policy_result(tmp_path) -> None:
+def test_hosted_narrative_cannot_change_policy_result(tmp_path) -> None:
     artifact_root = tmp_path / "models"
     train_synthetic_models(
         artifact_root,
@@ -63,7 +73,7 @@ def test_phi_narrative_cannot_change_policy_result(tmp_path) -> None:
     baseline = run_sample_cases(artifact_root)
     assisted = run_sample_cases(
         artifact_root,
-        assistant=PhiManagerAssistant(NarrativeClient()),
+        assistant=StructuredManagerAssistant(NarrativeClient()),
     )
 
     assert [result.decision.action for result in assisted] == [
