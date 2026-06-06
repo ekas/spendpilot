@@ -3,479 +3,243 @@ import type {
   AnalysisResult,
   AgentId,
   AgentReport,
-  AgentMessage,
-  ConflictItem,
-  PolicyCheck,
-  SpendCategory,
-  RecurringBill,
-  SavingsOpportunity,
   DecisionOutcome,
+  HumanReviewItem,
   RiskLevel,
-  UploadedDocument,
-  DocumentType,
 } from "@/lib/types";
-import { inferDocumentType } from "@/lib/utils";
 
 const AGENT_ID_MAP: Record<string, AgentId> = {
-  "Data Credibility Agent": "evidence",
-  "Affordability Agent": "affordability",
-  "Credit Risk Agent": "credit-risk",
+  credibility: "evidence",
+  affordability: "affordability",
+  credit_risk: "credit-risk",
 };
 
-function agentIdFromName(name: string): AgentId {
-  return AGENT_ID_MAP[name] ?? "manager";
+function recommendation(value: string): "APPROVE" | "REFER" | "REJECT" {
+  if (value === "APPROVE") return "APPROVE";
+  if (value === "REJECT" || value === "DECLINE") return "REJECT";
+  return "REFER";
 }
 
-function scoreTo100(score: number): number {
-  return Math.round(score * 100);
-}
-
-function adverseRisk(report: BackendAgentReport): number {
-  return report.score_semantics === "adverse_risk"
-    ? report.score
-    : 1 - report.score;
-}
-
-function readinessScore(report: BackendAgentReport): number {
-  return scoreTo100(1 - adverseRisk(report));
-}
-
-function mapSeverity(reason: string): RiskLevel {
-  if (
-    reason.includes("FRAUD") ||
-    reason.includes("REJECT") ||
-    reason.includes("INVALID")
-  )
-    return "critical";
-  if (
-    reason.includes("HIGH") ||
-    reason.includes("MISSING") ||
-    reason.includes("UNVERIFIED") ||
-    reason.includes("MISMATCH")
-  )
-    return "medium";
-  return "low";
-}
-
-function mapDecision(status: string): DecisionOutcome {
-  switch (status.toUpperCase()) {
-    case "APPROVE":
-      return "approved";
-    case "REFER":
-      return "review-required";
-    case "REJECT":
-      return "declined";
-    default:
-      return "pending";
-  }
+function decisionOutcome(value: string): DecisionOutcome {
+  if (value === "APPROVE") return "approved";
+  if (value === "REJECT") return "declined";
+  return "review-required";
 }
 
 function transformAgentReport(report: BackendAgentReport): AgentReport {
-  const agentId = agentIdFromName(report.agent_name);
-  const readiness = readinessScore(report);
-  const riskPercent = scoreTo100(adverseRisk(report));
+  const agentId =
+    AGENT_ID_MAP[report.agent_id ?? ""] ??
+    (report.agent_name === "Data Credibility Agent"
+      ? "evidence"
+      : report.agent_name === "Affordability Agent"
+        ? "affordability"
+        : "credit-risk");
 
   return {
     agentId,
     agentName: report.agent_name,
     status: "complete",
-    completedAt: new Date().toISOString(),
-    score: readiness,
-    confidence: report.confidence ?? 0.85,
+    reportId: report.report_id ?? null,
+    analysisRoundId: report.analysis_round_id ?? null,
+    adverseRisk: report.score,
+    calibratedProbability: report.calibrated_probability ?? null,
+    confidence: report.confidence ?? null,
+    recommendation: recommendation(report.recommendation),
     summary: report.summary,
-    findings: report.top_contributors.map((c, i) => ({
-      id: `${agentId}-f-${i}`,
-      category: c.reason_code ?? c.feature.replace(/_/g, " "),
-      severity: c.direction.includes("increases") ? "medium" : "low",
-      title: c.feature_label ?? c.feature.replace(/_/g, " "),
-      description: c.explanation,
-      evidence: report.evidence_refs,
-      confidence: 0.8,
+    reasonCodes: report.reason_codes,
+    evidenceRefs: report.evidence_refs,
+    contributions: report.top_contributors.map((contribution) => ({
+      feature: contribution.feature,
+      label:
+        contribution.feature_label ??
+        contribution.feature.replaceAll("_", " "),
+      value: contribution.value ?? null,
+      impact: contribution.impact,
+      direction:
+        contribution.impact > 0
+          ? "increases risk"
+          : contribution.impact < 0
+            ? "reduces risk"
+            : "neutral",
+      explanation: contribution.explanation,
+      reasonCode: contribution.reason_code ?? null,
+      evidenceRefs: contribution.evidence_refs ?? report.evidence_refs,
     })),
-    metrics: {
-      adverseRiskPercent: riskPercent,
-      readinessScore: readiness,
-      ...Object.fromEntries(
-        report.top_contributors.flatMap((c) => [
-          [c.feature, c.impact],
-          ...(c.value !== undefined
-            ? [[`${c.feature}_value`, String(c.value)]]
-            : []),
-        ])
-      ),
-    },
-    reasoning: [
-      ...report.reason_codes.map((r) => `Reason code: ${r}`),
-      `Recommendation: ${report.recommendation}`,
-      `Adverse-risk estimate: ${riskPercent}%`,
-      `Model: ${report.model_name ?? report.agent_name} ${report.model_version}`,
-      ...(report.model_source ? [`Runtime: ${report.model_source}`] : []),
-      ...(report.limitations ?? []),
-    ],
+    modelName: report.model_name ?? report.agent_name,
+    modelVersion: report.model_version,
+    modelSource: report.model_source ?? null,
+    limitations: report.limitations ?? [],
   };
 }
 
-function buildAgentMessages(caseResult: CaseResult): AgentMessage[] {
-  const messages: AgentMessage[] = [];
-  let i = 0;
-
-  for (const report of caseResult.specialist_reports) {
-    messages.push({
-      id: `msg-${i++}`,
-      from: agentIdFromName(report.agent_name),
-      to: "broadcast",
-      timestamp: new Date().toISOString(),
-      type: "analysis",
-      content:
-        `${report.agent_name}: ${report.summary} ` +
-        `(adverse risk: ${scoreTo100(adverseRisk(report))}%, ` +
-        `recommendation: ${report.recommendation})`,
-    });
+function requireUnderwriting(caseResult: CaseResult) {
+  if (
+    !caseResult.case_context ||
+    !caseResult.submitted_data ||
+    !caseResult.derived_features ||
+    !caseResult.evidence ||
+    !caseResult.audit_bundle
+  ) {
+    throw new Error(
+      "The modeling API returned a legacy response without underwriting data."
+    );
   }
-
-  for (const disagreement of caseResult.manager_report.disagreements) {
-    messages.push({
-      id: `msg-${i++}`,
-      from: "manager",
-      to: "broadcast",
-      timestamp: new Date().toISOString(),
-      type: "conflict",
-      content: disagreement,
-    });
-  }
-
-  messages.push({
-    id: `msg-${i++}`,
-    from: "manager",
-    to: "broadcast",
-    timestamp: new Date().toISOString(),
-    type: "resolution",
-    content: caseResult.manager_report.readable_explanation,
-  });
-
-  return messages;
+  return {
+    context: caseResult.case_context,
+    submitted: caseResult.submitted_data,
+    derived: caseResult.derived_features,
+    evidence: caseResult.evidence,
+    audit: caseResult.audit_bundle,
+  };
 }
 
-function buildConflicts(caseResult: CaseResult): ConflictItem[] {
-  return caseResult.manager_report.disagreements.map((d, i) => ({
-    id: `conf-${i}`,
-    agents: caseResult.specialist_reports.map((r) =>
-      agentIdFromName(r.agent_name)
-    ),
-    topic: "Agent disagreement",
-    description: d,
-    severity: "medium" as RiskLevel,
-    resolution: caseResult.policy_decision.requires_human_review
-      ? undefined
-      : "Resolved by Manager Agent aggregation",
-    resolved: !caseResult.policy_decision.requires_human_review,
-  }));
-}
-
-function buildPolicyChecks(caseResult: CaseResult): PolicyCheck[] {
-  const { policy_decision: policy, specialist_reports: reports } = caseResult;
-  const evidence = reports.find(
-    (report) => report.agent_name === "Data Credibility Agent"
-  );
-  const affordability = reports.find(
-    (report) => report.agent_name === "Affordability Agent"
-  );
-  const credit = reports.find(
-    (report) => report.agent_name === "Credit Risk Agent"
-  );
-
-  const checks: PolicyCheck[] = [
-    {
-      id: "pol-evidence",
-      rule: "Evidence adverse risk within policy tolerance",
-      status: recommendationStatus(evidence?.recommendation),
-      details: `Adverse risk: ${evidence ? scoreTo100(adverseRisk(evidence)) : "unavailable"}%`,
-    },
-    {
-      id: "pol-affordability",
-      rule: "Affordability adverse risk within policy tolerance",
-      status: recommendationStatus(affordability?.recommendation),
-      details: `Adverse risk: ${affordability ? scoreTo100(adverseRisk(affordability)) : "unavailable"}%`,
-    },
-    {
-      id: "pol-credit",
-      rule: "Credit adverse risk within policy tolerance",
-      status: recommendationStatus(credit?.recommendation),
-      details: `Adverse risk: ${credit ? scoreTo100(adverseRisk(credit)) : "unavailable"}%`,
-    },
-  ];
-
-  for (const rule of policy.policy_rules ?? []) {
-    checks.push({
-      id: `pol-${rule.rule_id}`,
-      rule: rule.rule_id.replace(/_/g, " "),
-      status:
-        rule.rule_id === "UNANIMOUS_AUTOMATIC_APPROVAL"
-          ? "pass"
-          : rule.rule_id === "HUMAN_REVIEW_REQUIRED"
-            ? "warning"
-            : "fail",
-      details: rule.description,
-    });
-  }
-
-  return checks;
-}
-
-function recommendationStatus(
-  recommendation: string | undefined
-): PolicyCheck["status"] {
-  if (recommendation === "REJECT") return "fail";
-  if (recommendation === "REFER") return "warning";
-  return recommendation === "APPROVE" || recommendation === "PASS"
-    ? "pass"
-    : "pending";
-}
-
-function deriveSpendCategories(applicant: CaseResult["applicant"]): SpendCategory[] {
-  const housing = applicant.monthly_expenses * 0.35;
-  const food = applicant.monthly_expenses * 0.15;
-  const transport = applicant.monthly_expenses * 0.1;
-  const debt = applicant.existing_debt / 12;
-  const other = applicant.monthly_expenses - housing - food - transport;
-
-  const cats = [
-    { name: "Housing", amount: housing, trend: "stable" as const },
-    { name: "Food & Dining", amount: food, trend: "stable" as const },
-    { name: "Transportation", amount: transport, trend: "stable" as const },
-    { name: "Debt Payments", amount: debt, trend: "stable" as const },
-    { name: "Other", amount: Math.max(0, other), trend: "stable" as const },
-  ];
-
-  const total = cats.reduce((s, c) => s + c.amount, 0);
-  return cats.map((c) => ({
-    ...c,
-    percentage: total > 0 ? (c.amount / total) * 100 : 0,
-    riskFlag: c.name === "Debt Payments" && debt > applicant.monthly_income * 0.15,
-  }));
-}
-
-function deriveRecurringBills(applicant: CaseResult["applicant"]): RecurringBill[] {
-  return [
-    {
-      vendor: "Estimated Housing/Rent",
-      amount: Math.round(applicant.monthly_expenses * 0.35),
-      frequency: "monthly",
-      nextDue: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-      verified: applicant.income_verified,
-      duplicateRisk: false,
-    },
-    {
-      vendor: "Debt Service",
-      amount: Math.round(applicant.existing_debt / 12),
-      frequency: "monthly",
-      nextDue: new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10),
-      verified: true,
-      duplicateRisk: false,
-    },
-  ];
-}
-
-function deriveSavings(caseResult: CaseResult): SavingsOpportunity[] {
-  const { applicant, specialist_reports: reports } = caseResult;
-  const opportunities: SavingsOpportunity[] = [];
-  const freeCash = applicant.monthly_income - applicant.monthly_expenses;
-
-  if (applicant.credit_utilization > 0.5) {
-    opportunities.push({
-      id: "sav-util",
-      title: "Reduce credit utilization",
-      potentialSavings: Math.round(applicant.monthly_expenses * 0.05),
-      category: "Credit",
-      confidence: 0.75,
-      action: `Utilization at ${(applicant.credit_utilization * 100).toFixed(0)}% — pay down balances`,
-    });
-  }
-
-  if (freeCash < applicant.requested_amount / 36) {
-    opportunities.push({
-      id: "sav-budget",
-      title: "Improve affordability buffer",
-      potentialSavings: Math.round(applicant.monthly_expenses * 0.1),
-      category: "Budget",
-      confidence: 0.7,
-      action: "Reduce discretionary spend to improve installment coverage",
-    });
-  }
-
-  const missingDocs = reports[0]?.reason_codes.includes("MISSING_DOCUMENTS");
-  if (missingDocs) {
-    opportunities.push({
-      id: "sav-docs",
-      title: "Complete document submission",
-      potentialSavings: 0,
-      category: "Compliance",
-      confidence: 0.95,
-      action: "Submit missing bank statement, ID, and income proof",
-    });
-  }
-
-  return opportunities;
-}
-
-function overallRiskLevel(caseResult: CaseResult): RiskLevel {
-  const avg =
-    caseResult.specialist_reports.reduce((s, r) => s + adverseRisk(r), 0) /
-    caseResult.specialist_reports.length;
-
-  if (caseResult.status === "REJECT" || avg >= 0.7) return "critical";
-  if (avg >= 0.55) return "high";
-  if (caseResult.status === "REFER" || avg >= 0.35) return "medium";
-  return "low";
-}
-
-export function caseResultToAnalysis(
-  caseResult: CaseResult,
-  uploadedDocs?: UploadedDocument[]
-): AnalysisResult {
-  const { applicant } = caseResult;
-  const evidence = caseResult.specialist_reports.find(
-    (r) => r.agent_name === "Data Credibility Agent"
-  );
-  const affordability = caseResult.specialist_reports.find(
-    (r) => r.agent_name === "Affordability Agent"
-  );
-  const credit = caseResult.specialist_reports.find(
-    (r) => r.agent_name === "Credit Risk Agent"
-  );
-
-  const agentReports: AgentReport[] = [
-    ...caseResult.specialist_reports.map(transformAgentReport),
-    {
-      agentId: "manager",
-      agentName: "Manager Agent",
-      status: "complete",
-      completedAt: new Date().toISOString(),
-      score: scoreTo100(
-        1 -
-          caseResult.specialist_reports.reduce(
-            (s, r) => s + adverseRisk(r),
-            0
-          ) /
-          caseResult.specialist_reports.length
-      ),
-      confidence: 0.86,
-      summary: caseResult.manager_report.reviewer_summary,
-      findings: caseResult.manager_report.disagreements.map((d, i) => ({
-        id: `mgr-f-${i}`,
-        category: "Aggregation",
-        severity: mapSeverity(d),
-        title: "Agent disagreement",
-        description: d,
-        evidence: [],
-        confidence: 0.8,
-      })),
-      metrics: {
-        disagreements: caseResult.manager_report.disagreements.length,
-        reanalysisRequests:
-          caseResult.manager_report.requested_reanalysis.length,
-      },
-      reasoning: [
-        caseResult.manager_report.reviewer_summary,
-        caseResult.manager_report.readable_explanation,
-        `Recommendation: ${caseResult.manager_report.recommendation}`,
-      ],
-    },
-  ];
-
-  const documents: UploadedDocument[] =
-    uploadedDocs ??
-    applicant.documents.map((name, i) => ({
-      id: `doc-${i}`,
-      name,
-      type: inferDocumentType(name) as DocumentType,
-      size: 0,
-      uploadedAt: caseResult.created_at ?? new Date().toISOString(),
-      status: "ready" as const,
-    }));
-
-  const savingsRate =
-    applicant.monthly_income > 0
-      ? (applicant.monthly_income - applicant.monthly_expenses) /
-        applicant.monthly_income
-      : 0;
-
-  const dti = applicant.existing_debt / Math.max(applicant.monthly_income, 1);
-
-  const outcome = mapDecision(caseResult.status);
-  const conditions: string[] = [];
-
-  if (caseResult.policy_decision.requires_human_review) {
-    conditions.push("Human review required before final approval");
-  }
-  if (caseResult.manager_report.requested_reanalysis.length) {
-    conditions.push(...caseResult.manager_report.requested_reanalysis);
-  }
+export function caseResultToAnalysis(caseResult: CaseResult): AnalysisResult {
+  const { context, submitted, derived, evidence, audit } =
+    requireUnderwriting(caseResult);
+  const policy = caseResult.policy_decision;
+  const manager = caseResult.manager_report;
+  const label = recommendation(policy.final_decision);
 
   return {
     caseId: caseResult.case_id,
-    snapshot: {
-      id: caseResult.case_id,
-      applicantName: applicant.name,
-      applicationDate: caseResult.created_at ?? new Date().toISOString(),
-      documents,
-      monthlyIncome: applicant.monthly_income,
-      monthlyExpenses: applicant.monthly_expenses,
-      debtToIncome: dti,
-      savingsRate: Math.max(0, savingsRate),
-      validationStatus:
-        evidence?.reason_codes.includes("MISSING_DOCUMENTS") ||
-        evidence?.reason_codes.includes("INVALID_FIELDS")
-          ? "partial"
-          : "valid",
-      validationIssues: evidence?.reason_codes.filter(
-        (r) => r.includes("MISSING") || r.includes("INVALID") || r.includes("MISMATCH")
-      ) ?? [],
+    caseContext: {
+      snapshotId: context.snapshot_id,
+      snapshotHash: context.snapshot_hash,
+      analysisRoundId: context.analysis_round_id,
+      decisionId: context.decision_id,
+      applicantRef: context.applicant_ref,
+      currency: "EUR",
+      createdAt: context.created_at,
     },
-    agentReports,
-    agentMessages: buildAgentMessages(caseResult),
-    conflicts: buildConflicts(caseResult),
-    policyChecks: buildPolicyChecks(caseResult),
-    credibility: {
-      evidenceScore: evidence ? readinessScore(evidence) : 0,
-      affordabilityScore: affordability ? readinessScore(affordability) : 0,
-      creditRiskScore: credit ? readinessScore(credit) : 0,
-      overallScore: scoreTo100(
-        1 -
-          ((evidence ? adverseRisk(evidence) : 1) +
-            (affordability ? adverseRisk(affordability) : 1) +
-            (credit ? adverseRisk(credit) : 1)) /
-            3
-      ),
-      riskLevel: overallRiskLevel(caseResult),
-      confidence: 0.86,
+    applicantName: caseResult.applicant.name,
+    submittedData: {
+      monthlyIncome: submitted.monthly_income,
+      monthlyExpenses: submitted.monthly_expenses,
+      requestedAmount: submitted.requested_amount,
+      existingDebt: submitted.existing_debt,
+      creditUtilization: submitted.credit_utilization,
+      delinquencies12m: submitted.delinquencies_12m,
+      employmentMonths: submitted.employment_months,
+      overdrafts90d: submitted.overdrafts_90d,
+      incomeVerified: submitted.income_verified,
     },
-    spendCategories: deriveSpendCategories(applicant),
-    recurringBills: deriveRecurringBills(applicant),
-    savingsOpportunities: deriveSavings(caseResult),
+    derivedFeatures: {
+      effectiveMonthlyIncome: derived.effective_monthly_income,
+      effectiveMonthlyExpenses: derived.effective_monthly_expenses,
+      effectiveExistingDebt: derived.effective_existing_debt,
+      effectiveCreditUtilization: derived.effective_credit_utilization,
+      effectiveDelinquencies12m: derived.effective_delinquencies_12m,
+      effectiveEmploymentMonths: derived.effective_employment_months,
+      freeCashFlow: derived.free_cash_flow,
+      expenseRatio: derived.expense_ratio,
+      debtToMonthlyIncome: derived.debt_to_monthly_income,
+      estimatedInstallment36m: derived.estimated_installment_36m,
+      installmentBurden: derived.installment_burden,
+    },
+    evidence: {
+      documentCount: evidence.document_count,
+      evidenceRefs: evidence.evidence_refs,
+      coverageScore: evidence.coverage_score,
+      missingDocuments: evidence.missing_documents,
+      consistencyFindings: evidence.consistency_findings,
+      consistencyFlagCount: evidence.consistency_flag_count,
+      unreadableDocumentCount: evidence.unreadable_document_count,
+      verificationState: evidence.verification_state,
+      incomeVerified: evidence.income_verified,
+    },
+    agentReports: caseResult.specialist_reports.map(transformAgentReport),
+    policyChecks: (policy.policy_rules ?? []).map((rule) => ({
+      id: rule.rule_id,
+      rule: rule.rule_id.replaceAll("_", " "),
+      status:
+        rule.rule_id === "UNANIMOUS_AUTOMATIC_APPROVAL"
+          ? "pass"
+          : policy.requires_human_review
+            ? "warning"
+            : label === "REJECT"
+              ? "fail"
+              : "pass",
+      details: rule.description,
+    })),
+    manager: {
+      recommendation: recommendation(manager.recommendation),
+      disagreement:
+        manager.disagreement ?? manager.disagreements.length > 0,
+      disagreements: manager.disagreements,
+      requestedReanalysis: manager.requested_reanalysis,
+      summary: manager.reviewer_summary,
+      explanation: manager.readable_explanation,
+      assistantStatus: manager.assistant_status ?? null,
+      requiresHumanReview:
+        manager.requires_human_review ?? policy.requires_human_review,
+      reasonCodes: manager.reason_codes ?? [],
+    },
     decision: {
-      outcome,
-      rationale: [
-        caseResult.policy_decision.reason,
-        caseResult.manager_report.readable_explanation,
-        ...caseResult.policy_decision.policy_flags.map((f) => `Policy: ${f}`),
-      ],
-      conditions: conditions.length ? conditions : undefined,
-      reviewedBy: "Manager Agent",
-      decidedAt: caseResult.created_at ?? new Date().toISOString(),
+      outcome: decisionOutcome(policy.final_decision),
+      label,
+      reason: policy.reason,
+      finalAuthority:
+        policy.final_authority ?? "Deterministic policy engine",
+      requiresHumanReview: policy.requires_human_review,
+      reviewId: policy.review_id ?? null,
+      finalized: policy.finalized ?? false,
+      policyVersion: policy.policy_version ?? null,
+      ruleHits: (policy.policy_rules ?? []).map((rule) => ({
+        ruleId: rule.rule_id,
+        description: rule.description,
+      })),
+      reasonCodes: policy.policy_flags,
     },
-    pipelineStage: "complete",
+    counterfactuals: (caseResult.counterfactuals ?? []).map((scenario) => ({
+      scenarioId: scenario.scenario_id,
+      label: scenario.label,
+      hypothetical: true,
+      persisted: false,
+      assumption: scenario.assumption,
+      changedFields: scenario.changed_fields.map((change) => ({
+        field: change.field,
+        originalValue: change.original_value,
+        hypotheticalValue: change.hypothetical_value,
+      })),
+      specialistDeltas: scenario.specialist_deltas.map((delta) => ({
+        agentId: delta.agent_id,
+        originalRisk: delta.original_risk,
+        hypotheticalRisk: delta.hypothetical_risk,
+        riskDelta: delta.risk_delta,
+      })),
+      originalAverageRisk: scenario.original_average_risk,
+      hypotheticalAverageRisk: scenario.hypothetical_average_risk,
+      overallRiskDelta: scenario.overall_risk_delta,
+      riskReduction: scenario.risk_reduction,
+      originalPolicyOutcome: scenario.original_policy_outcome,
+      hypotheticalPolicyOutcome: scenario.hypothetical_policy_outcome,
+      originalRequiresReview: scenario.original_requires_review,
+      hypotheticalRequiresReview: scenario.hypothetical_requires_review,
+    })),
+    modelRuntime: {
+      source: caseResult.model_runtime?.source ?? "unavailable",
+      scoreSemantics: "adverse_risk",
+    },
+    auditBundle: audit,
+    pipelineStage: policy.requires_human_review ? "human-review" : "complete",
   };
 }
 
-export function caseResultToReviewItem(caseResult: CaseResult) {
-  const analysis = caseResultToAnalysis(caseResult);
-  const priority =
-    analysis.credibility.riskLevel === "critical"
-      ? "urgent"
-      : analysis.credibility.riskLevel === "high"
+export function caseResultToReviewItem(
+  caseResult: CaseResult
+): HumanReviewItem {
+  const reports = caseResult.specialist_reports;
+  const averageRisk =
+    reports.length > 0
+      ? reports.reduce((sum, report) => sum + report.score, 0) /
+        reports.length
+      : 1;
+  const riskLevel: RiskLevel =
+    averageRisk >= 0.7
+      ? "critical"
+      : averageRisk >= 0.55
         ? "high"
-        : caseResult.status === "REFER"
+        : averageRisk >= 0.35
           ? "medium"
           : "low";
 
@@ -484,10 +248,17 @@ export function caseResultToReviewItem(caseResult: CaseResult) {
     caseId: caseResult.case_id,
     applicantName: caseResult.applicant.name,
     submittedAt: caseResult.created_at ?? new Date().toISOString(),
-    priority: priority as "low" | "medium" | "high" | "urgent",
+    priority:
+      riskLevel === "critical"
+        ? "urgent"
+        : riskLevel === "high"
+          ? "high"
+          : caseResult.policy_decision.requires_human_review
+            ? "medium"
+            : "low",
     reason: caseResult.policy_decision.reason,
-    credibilityScore: analysis.credibility.overallScore,
-    riskLevel: analysis.credibility.riskLevel,
-    status: "pending" as const,
+    credibilityScore: Math.round((1 - averageRisk) * 100),
+    riskLevel,
+    status: "pending",
   };
 }

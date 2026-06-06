@@ -3,23 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  User,
-  PieChart,
-  DollarSign,
-  LineChart,
-  CreditCard,
+  Banknote,
+  WalletCards,
+  Percent,
+  Gauge,
+  Scale,
   Upload,
-  FileText,
+  Download,
 } from "lucide-react";
 import { loadStoredAnalysis } from "@/hooks/useAnalysis";
-import { getAnalysis, getMockAnalysis } from "@/lib/api";
-import { computeExecutiveMetrics } from "@/lib/dashboard-metrics";
-import { formatCompactCurrency, formatPercent } from "@/lib/utils";
+import { getAnalysis } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
 import type { AnalysisResult } from "@/lib/types";
 
 import { MetricCard } from "@/components/dashboard/MetricCard";
-import { SpendByCategoryChart } from "@/components/dashboard/SpendByCategoryChart";
-import { SpendOverTimeChart } from "@/components/dashboard/SpendOverTimeChart";
 import { SpecialistAgentPanel } from "@/components/dashboard/SpecialistAgentPanel";
 import { ManagerSummaryPanel } from "@/components/dashboard/ManagerSummaryPanel";
 import { DecisionEvolutionChart } from "@/components/dashboard/DecisionEvolutionChart";
@@ -27,6 +24,8 @@ import { CounterfactualChart } from "@/components/dashboard/CounterfactualChart"
 import { RiskDriversChart } from "@/components/dashboard/RiskDriversChart";
 import { ReasonCodeChart } from "@/components/dashboard/ReasonCodeChart";
 import { PolicyEnginePanel } from "@/components/dashboard/PolicyEnginePanel";
+import { SubmittedDataPanel } from "@/components/dashboard/SubmittedDataPanel";
+import { EvidencePanel } from "@/components/dashboard/EvidencePanel";
 import { Button } from "@/components/ui/Button";
 
 export default function DashboardPage() {
@@ -46,10 +45,12 @@ export default function DashboardPage() {
       const params = new URLSearchParams(window.location.search);
       const caseId = params.get("case");
       if (caseId) {
-        const data = await getAnalysis(caseId);
-        setAnalysis(data);
-      } else {
-        setAnalysis(getMockAnalysis());
+        try {
+          const data = await getAnalysis(caseId);
+          setAnalysis(data);
+        } catch {
+          setAnalysis(null);
+        }
       }
       setLoading(false);
     }
@@ -70,7 +71,15 @@ export default function DashboardPage() {
   if (!analysis) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-muted-foreground">No analysis data available.</p>
+        <div className="text-center">
+          <h1 className="text-xl font-semibold text-foreground">
+            Start an application
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Submit applicant data and evidence to generate an underwriting
+            result.
+          </p>
+        </div>
         <Button onClick={() => router.push("/")}>
           <Upload className="h-4 w-4" />
           Start Application
@@ -79,11 +88,22 @@ export default function DashboardPage() {
     );
   }
 
-  const { snapshot } = analysis;
-  const specialistReports = analysis.agentReports.filter(
-    (r) => r.agentId !== "manager"
-  );
-  const metrics = computeExecutiveMetrics(analysis);
+  const specialistReports = analysis.agentReports;
+  const averageRisk =
+    specialistReports.reduce((sum, report) => sum + report.adverseRisk, 0) /
+    specialistReports.length;
+  const exportAudit = () => {
+    const blob = new Blob(
+      [JSON.stringify(analysis.auditBundle, null, 2)],
+      { type: "application/json" }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `spendpilot-${analysis.caseId}-audit.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
@@ -91,16 +111,16 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-            Executive Overview
+            Underwriting Review
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Explainable affordability, evidence, and credit assessment ·{" "}
-            {snapshot.applicantName}
+            Case {analysis.caseId} · snapshot{" "}
+            {analysis.caseContext.snapshotId}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm">
-            <FileText className="h-3.5 w-3.5" />
+          <Button variant="secondary" size="sm" onClick={exportAudit}>
+            <Download className="h-3.5 w-3.5" />
             Export Report
           </Button>
         </div>
@@ -109,54 +129,51 @@ export default function DashboardPage() {
       {/* Top tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         <MetricCard
-          label="Monthly Expenses"
-          value={formatCompactCurrency(metrics.totalSpend)}
-          icon={User}
+          label="Requested Amount"
+          value={formatMoney(analysis.submittedData.requestedAmount)}
+          icon={Banknote}
           accent="violet"
-          trend="up"
-          trendPercent={`${formatPercent(metrics.totalSpendTrend)}`}
-          trendLabel={`vs ${metrics.priorMonthLabel}`}
         />
         <MetricCard
-          label="Income Used"
-          value={formatPercent(metrics.budgetUtilization, 0)}
-          icon={PieChart}
+          label="Free Cash Flow"
+          value={formatMoney(analysis.derivedFeatures.freeCashFlow)}
+          icon={WalletCards}
           accent="emerald"
-          progress={metrics.budgetUtilization}
-          progressSubtext={`${formatCompactCurrency(metrics.totalSpend)} of ${formatCompactCurrency(metrics.budgetCap)}`}
         />
         <MetricCard
-          label="Savings Identified"
-          value={formatCompactCurrency(metrics.savingsIdentified)}
-          icon={DollarSign}
+          label="Expense Ratio"
+          value={formatRatio(analysis.derivedFeatures.expenseRatio)}
+          icon={Percent}
           accent="blue"
-          trend="up"
-          trendPercent={`${formatPercent(metrics.savingsTrend)}`}
-          trendLabel={`vs ${metrics.priorMonthLabel}`}
         />
         <MetricCard
-          label={`Forecast (${metrics.forecastMonthLabel})`}
-          value={formatCompactCurrency(metrics.forecast)}
-          icon={LineChart}
+          label="Average Adverse Risk"
+          value={`${(averageRisk * 100).toFixed(1)}%`}
+          icon={Gauge}
           accent="amber"
-          trend="up"
-          trendPercent={`${formatPercent(metrics.forecastTrend)}`}
-          trendLabel={`vs ${metrics.priorMonthShort}`}
+          progress={averageRisk * 100}
+          progressSubtext="Mean of the three specialist probabilities"
         />
         <MetricCard
-          label="Evidence Items"
-          value={snapshot.documents.length.toLocaleString()}
-          icon={CreditCard}
+          label="Decision Status"
+          value={
+            analysis.decision.requiresHumanReview
+              ? "Review required"
+              : analysis.decision.label
+          }
+          icon={Scale}
           accent="rose"
-          progress={snapshot.validationStatus === "valid" ? 100 : 50}
-          progressSubtext={snapshot.validationStatus.replace("-", " ")}
+          progressSubtext={
+            analysis.decision.finalized
+              ? "Finalized"
+              : "Awaiting authorized reviewer"
+          }
         />
       </div>
 
-      {/* Spend charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <SpendByCategoryChart analysis={analysis} />
-        <SpendOverTimeChart analysis={analysis} />
+        <SubmittedDataPanel analysis={analysis} />
+        <EvidencePanel analysis={analysis} />
       </div>
 
       {/* Agent panels */}
@@ -181,4 +198,12 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+function formatMoney(value: number | null): string {
+  return value === null ? "Not provided" : formatCurrency(value);
+}
+
+function formatRatio(value: number | null): string {
+  return value === null ? "Not provided" : `${(value * 100).toFixed(1)}%`;
 }

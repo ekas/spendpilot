@@ -13,14 +13,27 @@ import {
 } from "recharts";
 import { ChartSection } from "./ChartSection";
 import type { AnalysisResult } from "@/lib/types";
-import { getRiskDrivers } from "@/lib/chart-data";
 
 export function RiskDriversChart({
   analysis,
 }: {
   analysis: AnalysisResult;
 }) {
-  const data = getRiskDrivers(analysis);
+  const data = analysis.agentReports
+    .flatMap((report) =>
+      report.contributions.map((contribution) => ({
+        name: contribution.label,
+        impact: contribution.impact,
+        agent: report.agentName,
+        value: contribution.value,
+      }))
+    )
+    .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
+    .slice(0, 8);
+  const extent = Math.max(
+    ...data.map((entry) => Math.abs(entry.impact)),
+    0.01
+  );
 
   return (
     <ChartSection title="Top Risk Drivers (SHAP Impact)">
@@ -34,12 +47,12 @@ export function RiskDriversChart({
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
             <XAxis
               type="number"
-              domain={[-0.15, 0.4]}
+              domain={[-extent, extent]}
               tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
               axisLine={false}
               tickLine={false}
               label={{
-                value: "Impact on Approval Probability",
+                value: "Signed contribution to modeled adverse risk",
                 position: "insideBottom",
                 offset: -2,
                 fontSize: 10,
@@ -55,9 +68,12 @@ export function RiskDriversChart({
               tickLine={false}
             />
             <Tooltip
-              formatter={(v) => {
+              formatter={(v, _name, item) => {
                 const n = Number(v);
-                return [n > 0 ? `+${n.toFixed(2)}` : n.toFixed(2), "Impact"];
+                return [
+                  n > 0 ? `+${n.toFixed(4)}` : n.toFixed(4),
+                  `${item.payload.agent} · value ${String(item.payload.value ?? "Not provided")}`,
+                ];
               }}
               contentStyle={{
                 background: "var(--card)",

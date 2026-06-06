@@ -16,8 +16,13 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { RiskBadge } from "@/components/ui/Badge";
 import { loadStoredAnalysis } from "@/hooks/useAnalysis";
-import { formatDate } from "@/lib/utils";
-import type { AnalysisResult, HumanReviewItem } from "@/lib/types";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import type {
+  AgentId,
+  AnalysisResult,
+  HumanReviewItem,
+  RiskLevel,
+} from "@/lib/types";
 
 export default function ProfilePage() {
   const [items, setItems] = useState<HumanReviewItem[]>([]);
@@ -42,10 +47,20 @@ export default function ProfilePage() {
       ? Math.round(
           items.reduce((sum, i) => sum + i.credibilityScore, 0) / items.length
         )
-      : analysis?.credibility.overallScore ?? 0;
+      : analysis
+        ? Math.round(
+            (1 -
+              analysis.agentReports.reduce(
+                (sum, report) => sum + report.adverseRisk,
+                0
+              ) /
+                analysis.agentReports.length) *
+              100
+          )
+        : 0;
 
   const applicantName =
-    analysis?.snapshot.applicantName ??
+    analysis?.applicantName ??
     items[0]?.applicantName ??
     "Applicant";
   const caseId = analysis?.caseId ?? items[0]?.caseId;
@@ -85,10 +100,18 @@ export default function ProfilePage() {
                   Decision readiness
                 </p>
                 <p className="text-2xl font-bold text-foreground tabular-nums">
-                  {analysis.credibility.overallScore}
+                  {Math.round(
+                    (1 -
+                      analysis.agentReports.reduce(
+                        (sum, report) => sum + report.adverseRisk,
+                        0
+                      ) /
+                        analysis.agentReports.length) *
+                      100
+                  )}
                 </p>
               </div>
-              <RiskBadge level={analysis.credibility.riskLevel} />
+              <RiskBadge level={riskLevelForAnalysis(analysis)} />
             </div>
           )}
         </div>
@@ -136,23 +159,27 @@ export default function ProfilePage() {
               <div className="space-y-3 text-sm">
                 <SnapshotRow
                   label="Monthly income"
-                  value={`$${analysis.snapshot.monthlyIncome.toLocaleString()}`}
+                  value={formatNullableMoney(analysis.submittedData.monthlyIncome)}
                 />
                 <SnapshotRow
                   label="Monthly expenses"
-                  value={`$${analysis.snapshot.monthlyExpenses.toLocaleString()}`}
+                  value={formatNullableMoney(analysis.submittedData.monthlyExpenses)}
                 />
                 <SnapshotRow
                   label="Debt-to-income"
-                  value={`${(analysis.snapshot.debtToIncome * 100).toFixed(1)}%`}
+                  value={formatNullablePercent(
+                    analysis.derivedFeatures.debtToMonthlyIncome
+                  )}
                 />
                 <SnapshotRow
-                  label="Savings rate"
-                  value={`${(analysis.snapshot.savingsRate * 100).toFixed(1)}%`}
+                  label="Free cash flow"
+                  value={formatNullableMoney(
+                    analysis.derivedFeatures.freeCashFlow
+                  )}
                 />
                 <SnapshotRow
                   label="Submitted"
-                  value={formatDate(analysis.snapshot.applicationDate)}
+                  value={formatDate(analysis.caseContext.createdAt)}
                 />
               </div>
               <div className="mt-4 pt-4 border-t border-border">
@@ -192,15 +219,15 @@ export default function ProfilePage() {
               <div className="space-y-3">
                 <ScoreRow
                   label="Evidence"
-                  score={analysis.credibility.evidenceScore}
+                  score={readinessFor(analysis, "evidence")}
                 />
                 <ScoreRow
                   label="Affordability"
-                  score={analysis.credibility.affordabilityScore}
+                  score={readinessFor(analysis, "affordability")}
                 />
                 <ScoreRow
                   label="Credit Readiness"
-                  score={analysis.credibility.creditRiskScore}
+                  score={readinessFor(analysis, "credit-risk")}
                 />
               </div>
             ) : (
@@ -240,4 +267,31 @@ function ScoreRow({ label, score }: { label: string; score: number }) {
       </div>
     </div>
   );
+}
+
+function formatNullableMoney(value: number | null): string {
+  return value === null ? "Not provided" : formatCurrency(value);
+}
+
+function formatNullablePercent(value: number | null): string {
+  return value === null ? "Not provided" : `${(value * 100).toFixed(1)}%`;
+}
+
+function readinessFor(analysis: AnalysisResult, agentId: AgentId): number {
+  const report = analysis.agentReports.find(
+    (candidate) => candidate.agentId === agentId
+  );
+  return report ? Math.round((1 - report.adverseRisk) * 100) : 0;
+}
+
+function riskLevelForAnalysis(analysis: AnalysisResult): RiskLevel {
+  const average =
+    analysis.agentReports.reduce(
+      (sum, report) => sum + report.adverseRisk,
+      0
+    ) / analysis.agentReports.length;
+  if (average >= 0.7) return "critical";
+  if (average >= 0.55) return "high";
+  if (average >= 0.35) return "medium";
+  return "low";
 }

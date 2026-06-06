@@ -106,7 +106,7 @@ async function handleMultipart(request: Request) {
   }
 
   const result = await runCase(applicant, caseId);
-  return NextResponse.json(caseResultToAnalysis(result, uploadedDocs));
+  return NextResponse.json(caseResultToAnalysis(result));
 }
 
 async function handleJson(body: AnalyzeBody) {
@@ -188,7 +188,5 @@ async function handleJson(body: AnalyzeBody) {
   }
 
   const result = await runCase(applicant, caseId);
-  return NextResponse.json(
-    caseResultToAnalysis(result, body.documents)
-  );
+  return NextResponse.json(caseResultToAnalysis(result));
 }

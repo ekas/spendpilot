@@ -1,88 +1,96 @@
 "use client";
 
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ReferenceLine,
-  ResponsiveContainer,
-} from "recharts";
+  Database,
+  Users,
+  GitMerge,
+  Scale,
+  UserCheck,
+  CheckCircle2,
+} from "lucide-react";
 import { ChartSection } from "./ChartSection";
 import type { AnalysisResult } from "@/lib/types";
-import { getDecisionEvolution } from "@/lib/chart-data";
+import { cn } from "@/lib/utils";
 
 export function DecisionEvolutionChart({
   analysis,
 }: {
   analysis: AnalysisResult;
 }) {
-  const data = getDecisionEvolution(analysis);
+  const stages = [
+    {
+      label: "Immutable snapshot",
+      detail: analysis.caseContext.snapshotId,
+      icon: Database,
+      state: "complete",
+    },
+    {
+      label: "Three specialists",
+      detail: `${analysis.agentReports.length} reports`,
+      icon: Users,
+      state: "complete",
+    },
+    {
+      label: "Manager",
+      detail: analysis.manager.disagreement ? "Disagreement" : "Aligned",
+      icon: GitMerge,
+      state: "complete",
+    },
+    {
+      label: "Policy engine",
+      detail: analysis.decision.label,
+      icon: Scale,
+      state: "complete",
+    },
+    {
+      label: analysis.decision.requiresHumanReview
+        ? "Human review"
+        : "Finalized",
+      detail: analysis.decision.requiresHumanReview
+        ? analysis.decision.reviewId ?? "Review queued"
+        : "No review required",
+      icon: analysis.decision.requiresHumanReview ? UserCheck : CheckCircle2,
+      state: analysis.decision.finalized ? "complete" : "current",
+    },
+  ] as const;
 
   return (
     <ChartSection
-      title="Decision Evolution"
-      subtitle="Approval probability across the review process"
+      title="Decision Flow"
+      subtitle="Actual execution path for this immutable case snapshot"
     >
-      <div className="h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-            <defs>
-              <linearGradient id="decisionGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis
-              dataKey="stage"
-              tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-              axisLine={false}
-              tickLine={false}
-              interval={0}
-              angle={-12}
-              textAnchor="end"
-              height={50}
-            />
-            <YAxis
-              domain={[0, 100]}
-              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v) => `${v}%`}
-            />
-            <Tooltip
-              formatter={(v) => [`${Number(v)}%`, "Approval Probability"]}
-              contentStyle={{
-                background: "var(--card)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 12,
-              }}
-            />
-            <ReferenceLine
-              y={70}
-              stroke="#ef4444"
-              strokeDasharray="4 4"
-              label={{
-                value: "Approval Threshold (70%)",
-                position: "insideTopRight",
-                fontSize: 10,
-                fill: "#ef4444",
-              }}
-            />
-            <Area
-              type="monotone"
-              dataKey="value"
-              stroke="#8b5cf6"
-              strokeWidth={2}
-              fill="url(#decisionGrad)"
-              dot={{ r: 5, fill: "#8b5cf6", strokeWidth: 2, stroke: "#fff" }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="space-y-2">
+        {stages.map((stage, index) => {
+          const Icon = stage.icon;
+          return (
+            <div
+              key={stage.label}
+              className="grid grid-cols-[32px_1fr_auto] items-center gap-3"
+            >
+              <div
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full border",
+                  stage.state === "complete"
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+                    : "border-amber-500/40 bg-amber-500/10 text-amber-600"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground">
+                  {stage.label}
+                </p>
+                <p className="truncate text-[10px] text-muted-foreground">
+                  {stage.detail}
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-muted-foreground">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </ChartSection>
   );

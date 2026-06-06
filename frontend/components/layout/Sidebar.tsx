@@ -33,8 +33,8 @@ export function Sidebar({ open, onClose, className }: SidebarProps) {
 
   useEffect(() => {
     const analysis = loadStoredAnalysis();
-    if (analysis?.snapshot.applicantName) {
-      setApplicantName(analysis.snapshot.applicantName);
+    if (analysis?.applicantName) {
+      setApplicantName(analysis.applicantName);
     }
   }, [pathname]);
 

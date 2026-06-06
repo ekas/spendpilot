@@ -3,14 +3,23 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { ChartSection } from "./ChartSection";
 import type { AnalysisResult } from "@/lib/types";
-import { getReasonCodes, CATEGORY_COLORS } from "@/lib/chart-data";
+import { CATEGORY_COLORS } from "@/lib/chart-data";
 
 export function ReasonCodeChart({
   analysis,
 }: {
   analysis: AnalysisResult;
 }) {
-  const data = getReasonCodes(analysis);
+  const counts = new Map<string, number>();
+  for (const report of analysis.agentReports) {
+    for (const code of report.reasonCodes) {
+      counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+  }
+  const data = [...counts].map(([name, value]) => ({
+    name: name.replaceAll("_", " "),
+    value,
+  }));
   const total = data.reduce((s, d) => s + d.value, 0);
 
   return (
@@ -57,7 +66,7 @@ export function ReasonCodeChart({
                 <span className="text-muted-foreground truncate">{item.name}</span>
               </div>
               <span className="text-foreground font-medium shrink-0">
-                {item.value} ({Math.round((item.value / total) * 100)}%)
+                  {item.value}
               </span>
             </div>
           ))}

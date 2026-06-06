@@ -1,4 +1,3 @@
-import { MOCK_ANALYSIS, MOCK_REVIEW_QUEUE } from "./mock-data";
 import type { AnalysisResult, HumanReviewItem, UploadedDocument } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -156,13 +155,4 @@ export async function checkHealth(): Promise<{
   const res = await fetch(apiUrl("/api/health"));
   if (!res.ok) throw new Error("API unavailable");
   return res.json();
-}
-
-/** @deprecated Use runAnalysis with files — kept for offline demo */
-export function getMockAnalysis(): AnalysisResult {
-  return MOCK_ANALYSIS;
-}
-
-export function getMockReviewQueue(): HumanReviewItem[] {
-  return MOCK_REVIEW_QUEUE;
 }

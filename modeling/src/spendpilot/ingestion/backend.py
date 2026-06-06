@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from decimal import Decimal
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -165,6 +166,38 @@ class BackendInputAdapter:
             features=features,
             evidence_refs=evidence_refs,
             missing_fields=missing_fields,
+        )
+
+    def revise_snapshot(
+        self,
+        snapshot: CaseSnapshot,
+        *,
+        snapshot_id: str,
+        feature_updates: dict[str, bool | int | float | str | None],
+    ) -> CaseSnapshot:
+        """Create a new immutable snapshot for a hypothetical assessment."""
+
+        features = {**snapshot.features, **feature_updates}
+        canonical = {
+            "case_id": snapshot.case_id,
+            "snapshot_id": snapshot_id,
+            "product": snapshot.product.value,
+            "requested_amount": float(snapshot.requested_amount),
+            "currency": snapshot.currency,
+            "features": features,
+            "evidence_refs": snapshot.evidence_refs,
+            "missing_fields": snapshot.missing_fields,
+        }
+        content_digest = hashlib.sha256(
+            json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        return snapshot.model_copy(
+            update={
+                "snapshot_id": snapshot_id,
+                "created_at": datetime.now(timezone.utc),
+                "content_hash": f"sha256:{content_digest}",
+                "features": features,
+            }
         )
 
     @staticmethod

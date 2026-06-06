@@ -24,7 +24,7 @@ const stages = [
 ] as const;
 
 interface AgentPipelineProps {
-  currentStage: AnalysisResult["pipelineStage"];
+  currentStage: AnalysisResult["pipelineStage"] | "upload" | "validation" | "agent-analysis" | "aggregation" | "conflict-detection" | "policy-validation" | "decision";
 }
 
 export function AgentPipeline({ currentStage }: AgentPipelineProps) {

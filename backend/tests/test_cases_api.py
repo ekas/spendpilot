@@ -217,3 +217,103 @@ def test_modeling_health_reports_artifact_or_scorecard_runtime() -> None:
 
     assert response.status_code == 200
     assert response.json()["fallback"] == "transparent_scorecard"
+
+
+def test_modeling_result_contains_real_underwriting_data_and_private_audit() -> None:
+    response = client.post(
+        "/modeling/analyze",
+        json={
+            "case_id": "audit-case",
+            "applicant": {
+                "name": "Audit Private Person",
+                "monthly_income": 3000,
+                "monthly_expenses": 2500,
+                "requested_amount": 9000,
+                "existing_debt": 6000,
+                "credit_utilization": 0.82,
+                "delinquencies_12m": 2,
+                "employment_months": 7,
+                "overdrafts_90d": 3,
+                "income_verified": False,
+                "documents": [
+                    "audit_private_id_document.pdf",
+                    "audit_private_bank_statement.pdf",
+                ],
+                "document_text": "Audit Private Person has private records.",
+                "document_signals": {
+                    "coverage_score": 0.6,
+                    "consistency_flags": ["INCOME_MISMATCH"],
+                    "unreadable_files": ["audit_private_bank_statement.pdf"],
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["case_context"]["currency"] == "EUR"
+    assert body["submitted_data"]["monthly_income"] == 3000
+    assert body["derived_features"]["free_cash_flow"] == 500
+    assert body["derived_features"]["estimated_installment_36m"] == 250
+    assert body["evidence"]["coverage_score"] == 0.6
+    assert body["evidence"]["unreadable_document_count"] == 1
+    assert body["applicant"]["documents"] == []
+    assert body["applicant"]["document_signals"] == {}
+    assert all(
+        ref.startswith("document:")
+        for ref in body["evidence"]["evidence_refs"]
+    )
+    assert all(
+        "evidence_refs" in contribution
+        for report in body["specialist_reports"]
+        for contribution in report["top_contributors"]
+    )
+    credibility = next(
+        report
+        for report in body["specialist_reports"]
+        if report["agent_id"] == "credibility"
+    )
+    assert credibility["model_source"] == "deterministic_rules"
+
+    scenarios = body["counterfactuals"]
+    assert len(scenarios) == 3
+    assert all(scenario["hypothetical"] for scenario in scenarios)
+    assert all(not scenario["persisted"] for scenario in scenarios)
+    assert all(
+        len(scenario["specialist_deltas"]) == 3
+        for scenario in scenarios
+    )
+    assert scenarios == sorted(
+        scenarios,
+        key=lambda scenario: scenario["risk_reduction"],
+        reverse=True,
+    )
+    assert body["case_context"]["snapshot_id"] == "snapshot_1"
+
+    audit = body["audit_bundle"]
+    serialized_audit = str(audit)
+    assert audit["schema_version"] == "spendpilot-underwriting-audit-v1"
+    assert len(audit["model_provenance"]) == 3
+    assert audit["limitations"]
+    assert "Audit Private Person" not in serialized_audit
+    assert "private records" not in serialized_audit
+    assert "audit_private_" not in serialized_audit
+
+
+def test_modeling_marks_unavailable_coverage_as_null() -> None:
+    response = client.post(
+        "/modeling/analyze",
+        json={
+            "applicant": {
+                "monthly_income": 4200,
+                "monthly_expenses": 2100,
+                "requested_amount": 6000,
+                "existing_debt": 800,
+                "credit_utilization": 0.22,
+                "documents": [],
+            }
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["evidence"]["coverage_score"] is None
