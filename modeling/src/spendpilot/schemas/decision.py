@@ -32,6 +32,8 @@ class DecisionRecord(BaseModel):
     decision_id: str = Field(min_length=1)
     case_id: str = Field(min_length=1)
     snapshot_id: str = Field(min_length=1)
+    analysis_round_id: str = Field(default="round_initial", min_length=1)
+    feedback_ids: tuple[str, ...] = ()
     policy_version: str = Field(min_length=1)
     action: DecisionAction
     reason_codes: tuple[str, ...] = Field(min_length=1)

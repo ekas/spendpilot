@@ -10,10 +10,23 @@ from spendpilot.schemas.agent_report import (
 from spendpilot.schemas.case import CaseSnapshot, CreditProduct
 from spendpilot.schemas.decision import DecisionAction, DecisionRecord, PolicyRuleHit
 from spendpilot.schemas.evidence import EvidenceKind, EvidenceReference
+from spendpilot.schemas.feedback import (
+    AgentAssessmentRequest,
+    AgentReportDelta,
+    AnalysisRound,
+    FeedbackEvent,
+    FeedbackSource,
+    FeedbackType,
+    VerificationStatus,
+)
+from spendpilot.schemas.outcome import OutcomeEvent, OutcomeSource, PaymentStatus
 
 __all__ = [
     "AgentId",
+    "AgentAssessmentRequest",
     "AgentReport",
+    "AgentReportDelta",
+    "AnalysisRound",
     "CaseSnapshot",
     "CheckStatus",
     "CreditProduct",
@@ -21,7 +34,14 @@ __all__ = [
     "DecisionRecord",
     "EvidenceKind",
     "EvidenceReference",
+    "FeedbackEvent",
+    "FeedbackSource",
+    "FeedbackType",
     "FeatureContribution",
     "PolicyRuleHit",
+    "OutcomeEvent",
+    "OutcomeSource",
+    "PaymentStatus",
     "Recommendation",
+    "VerificationStatus",
 ]

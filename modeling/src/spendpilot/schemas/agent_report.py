@@ -4,7 +4,13 @@ import math
 from datetime import datetime, timezone
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 class AgentId(StrEnum):
@@ -59,6 +65,9 @@ class AgentReport(BaseModel):
     report_id: str = Field(min_length=1)
     case_id: str = Field(min_length=1)
     snapshot_id: str = Field(min_length=1)
+    analysis_round_id: str = Field(default="round_initial", min_length=1)
+    feedback_ids: tuple[str, ...] = ()
+    responded_feedback_ids: tuple[str, ...] = ()
     agent_id: AgentId
     model_name: str = Field(min_length=1)
     model_version: str = Field(min_length=1)
@@ -83,3 +92,20 @@ class AgentReport(BaseModel):
         if len(values) != len(set(values)):
             raise ValueError("reason_codes must be unique")
         return values
+
+    @field_validator("feedback_ids", "responded_feedback_ids")
+    @classmethod
+    def feedback_ids_must_be_unique(
+        cls, values: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        if len(values) != len(set(values)):
+            raise ValueError("feedback identifiers must be unique")
+        return values
+
+    @model_validator(mode="after")
+    def responded_feedback_must_be_linked(self) -> "AgentReport":
+        if not set(self.responded_feedback_ids).issubset(self.feedback_ids):
+            raise ValueError(
+                "responded feedback must be linked to the report round"
+            )
+        return self
