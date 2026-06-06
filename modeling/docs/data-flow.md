@@ -84,3 +84,27 @@ The final record contains:
 
 Outcomes later feed model calibration, drift, stability, and fairness
 monitoring. They never update production models automatically.
+
+## 8. Case Feedback
+
+1. Store the reviewer correction or applicant appeal as an immutable event.
+2. Verify every evidence reference against a revised case snapshot.
+3. Let the Manager select the specialist targets.
+4. Create an `AnalysisRound` linked to the previous round.
+5. Rerun all specialists against the revised snapshot.
+6. Mark targeted responses and calculate report deltas.
+7. Route the new round to mandatory human review.
+8. Return the human resolution to the policy engine.
+
+Raw feedback rationale is retained for audit but is not supplied to model
+adapters or transformed into model features.
+
+## 9. Outcome Feedback
+
+1. Append and deduplicate repayment events from approved sources.
+2. Link events to the finalized approval decision.
+3. Label 90+ days past due within 12 calendar months as the primary outcome.
+4. Mature negative labels only after the full observation window.
+5. Join labels to the exact original decision snapshot.
+6. Evaluate candidate models offline.
+7. Require explicit validation and approval before any separate deployment.

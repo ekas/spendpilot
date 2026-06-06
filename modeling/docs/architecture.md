@@ -49,6 +49,17 @@ recommendation, request more information, are incomplete, or trigger a policy
 guardrail. Human resolutions are inputs to the policy engine, not direct
 database edits.
 
+### Feedback and offline learning
+
+Reviewer corrections and verified applicant appeals create new immutable
+analysis rounds. The Manager routes the accepted feedback, all three
+specialists rerun against one revised snapshot, and policy requires a new human
+resolution.
+
+Repayment observations are handled by a separate offline learning subsystem.
+They create mature outcome labels and point-in-time datasets, but cannot modify
+the active model registry or production decision workflow.
+
 ## Runtime Boundaries
 
 The initial implementation is a modular Python application:
@@ -67,6 +78,8 @@ Deterministic policy evaluation
 Human review when required
        |
 Policy-controlled finalization
+       |
+Repayment outcomes -> offline evaluation and approved model candidates
 ```
 
 The modules can be separated into services later without changing the public

@@ -50,3 +50,25 @@ review trigger.
 - Propagate case, workflow, trace, model, and policy version identifiers.
 - Record all human views, challenges, overrides, and resolutions.
 - Never place PII, credentials, or raw documents in telemetry baggage.
+
+## Feedback Governance
+
+- Only authorized reviewers and verified applicant appeals may trigger
+  re-analysis.
+- Applicant feedback must reference evidence present in the revised snapshot.
+- The Manager selects feedback targets; submitters cannot address model workers
+  directly.
+- Every accepted feedback event creates a new snapshot, round, report set, and
+  decision record.
+- All feedback-triggered rounds require human review.
+- Feedback rationale is never passed into a scoring model.
+
+## Outcome Governance
+
+- Repayment events are append-only and deduplicated by source event.
+- The primary label is 90+ days past due within 12 months of approval.
+- Negative labels remain immature until the full observation window closes.
+- Training examples use the original decision snapshot and cutoff.
+- Outcome ingestion cannot promote, replace, or deploy a production model.
+- Candidate validation and human approval are recorded separately from
+  deployment.
