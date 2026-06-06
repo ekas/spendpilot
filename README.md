@@ -31,3 +31,39 @@ policy, and returns human-review routing and explanations.
 
 If trained artifacts are absent, the same workflow uses transparent,
 monotonic development scorecards and reports that fallback in its provenance.
+
+## Deploy to Vercel
+
+The demo deployment uses a hybrid architecture:
+
+1. Vercel hosts the Next.js application from `frontend/`.
+2. This laptop runs FastAPI and the trained XGBoost artifacts.
+3. ngrok exposes only the local FastAPI port over HTTPS.
+4. Vercel stores that ngrok URL in `SPENDPILOT_MODELING_API_URL`.
+
+Start the trained modeling API from the repository root:
+
+```bash
+cd backend
+../modeling/.venv/bin/python -m uvicorn app.main:app \
+  --host 127.0.0.1 --port 8000
+```
+
+In another terminal, expose it:
+
+```bash
+ngrok http 8000
+```
+
+If the ngrok URL changes, update Vercel and redeploy:
+
+```bash
+cd frontend
+vercel env add SPENDPILOT_MODELING_API_URL production \
+  --value https://YOUR-NGROK-DOMAIN --force --yes --no-sensitive
+vercel deploy --prod --yes
+```
+
+The laptop must remain awake, connected to the internet, and running both
+processes. This is appropriate for a demo; a production deployment should move
+the modeling API to a persistent container service.

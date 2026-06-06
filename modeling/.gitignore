@@ -47,6 +47,7 @@ htmlcov/
 # Local data and model artifacts
 /artifacts/
 /data/
+/deployment_models/
 /models/
 *.bin
 *.gguf
