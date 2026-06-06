@@ -124,3 +124,40 @@ def test_review_queue_filters_cases_requiring_human_review() -> None:
     assert isinstance(payload, list)
     for case in payload:
         assert case["policy_decision"]["requires_human_review"] is True
+
+
+def test_compare_periods_returns_side_by_side_metrics() -> None:
+    payload = {
+        "applicant": {
+            "name": "Compare Applicant",
+            "monthly_income": 4200,
+            "monthly_expenses": 2000,
+            "requested_amount": 6000,
+            "existing_debt": 900,
+            "credit_utilization": 0.3,
+            "delinquencies_12m": 0,
+            "employment_months": 20,
+            "overdrafts_90d": 0,
+            "income_verified": True,
+            "documents": ["id_document.pdf", "bank_statement_jan.pdf", "income_proof.pdf"],
+        }
+    }
+    client.post("/cases/create", json=payload)
+
+    response = client.get(
+        "/cases/compare-periods",
+        params={
+            "period_a_start": "2000-01-01",
+            "period_a_end": "2000-01-31",
+            "period_b_start": "2000-02-01",
+            "period_b_end": "2100-12-31",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "period_a" in body
+    assert "period_b" in body
+    assert "delta" in body
+    assert body["period_a"]["total_cases"] == 0
+    assert body["period_b"]["total_cases"] >= 1

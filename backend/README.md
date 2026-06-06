@@ -21,8 +21,19 @@ Key endpoints:
 - GET /cases/samples
 - GET /cases
 - GET /cases/review-queue
+- GET /cases/compare-periods
 - POST /cases/create
 - POST /cases/create-with-upload (multipart form + files)
+
+Period comparison:
+
+- Compare two date ranges (for example January vs February):
+
+```text
+GET /cases/compare-periods?period_a_start=2026-01-01&period_a_end=2026-01-31&period_b_start=2026-02-01&period_b_end=2026-02-28
+```
+
+- Returns side-by-side metrics for both periods: volume, decision counts/rates, human-review rate, and average specialist scores.
 
 Upload flow:
 

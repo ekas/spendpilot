@@ -1,13 +1,66 @@
 from uuid import uuid4
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from datetime import date, datetime, time, timedelta
+
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from app.models.schemas import Applicant, CaseCreate, CaseResult
 from app.agents import data_credibility_agent, affordability_agent, credit_risk_agent, manager_agent
 from app.policy.rules import decide
 from app.data.sample_cases import SAMPLE_CASES
 from app.services.document_intelligence import analyze_uploaded_documents, persist_uploaded_documents
-from app.storage.case_repository import case_count, list_cases as repo_list_cases, list_review_queue as repo_list_review_queue, save_case, set_human_decision
+from app.storage.case_repository import case_count, list_cases as repo_list_cases, list_cases_between, list_review_queue as repo_list_review_queue, save_case, set_human_decision
 
 router = APIRouter(prefix="/cases", tags=["cases"])
+
+
+def _to_ts_range(start_date: date, end_date: date) -> tuple[str, str]:
+    if end_date < start_date:
+        raise HTTPException(status_code=422, detail="end date must be on or after start date")
+
+    start_dt = datetime.combine(start_date, time.min)
+    end_dt = datetime.combine(end_date + timedelta(days=1), time.min)
+    return start_dt.strftime("%Y-%m-%d %H:%M:%S"), end_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _safe_rate(part: int, total: int) -> float:
+    if total == 0:
+        return 0.0
+    return round(part / total, 4)
+
+
+def _summarize_period(cases: list[CaseResult], start_date: date, end_date: date) -> dict:
+    totals = {"APPROVE": 0, "REFER": 0, "REJECT": 0}
+    human_review_count = 0
+    score_acc = {}
+    score_counts = {}
+
+    for case in cases:
+        totals[case.status] = totals.get(case.status, 0) + 1
+        if case.policy_decision.requires_human_review:
+            human_review_count += 1
+
+        for report in case.specialist_reports:
+            score_acc[report.agent_name] = score_acc.get(report.agent_name, 0.0) + report.score
+            score_counts[report.agent_name] = score_counts.get(report.agent_name, 0) + 1
+
+    avg_scores = {
+        name: round(score_acc[name] / score_counts[name], 4)
+        for name in sorted(score_acc.keys())
+    }
+    total_cases = len(cases)
+
+    return {
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "total_cases": total_cases,
+        "decision_counts": totals,
+        "decision_rates": {
+            "APPROVE": _safe_rate(totals.get("APPROVE", 0), total_cases),
+            "REFER": _safe_rate(totals.get("REFER", 0), total_cases),
+            "REJECT": _safe_rate(totals.get("REJECT", 0), total_cases),
+        },
+        "human_review_rate": _safe_rate(human_review_count, total_cases),
+        "avg_specialist_scores": avg_scores,
+    }
 
 def run_case(applicant: Applicant, case_id: str | None = None) -> CaseResult:
     case_id = case_id or str(uuid4())[:8]
@@ -133,3 +186,32 @@ def human_decision(case_id: str, decision: str):
     if not updated:
         raise HTTPException(status_code=404, detail="case not found")
     return {"case_id": case_id, "human_decision": decision.upper(), "message":"Human reviewer decision recorded for demo."}
+
+
+@router.get("/compare-periods")
+def compare_periods(
+    period_a_start: date = Query(..., description="Start date for period A (YYYY-MM-DD)"),
+    period_a_end: date = Query(..., description="End date for period A (YYYY-MM-DD)"),
+    period_b_start: date = Query(..., description="Start date for period B (YYYY-MM-DD)"),
+    period_b_end: date = Query(..., description="End date for period B (YYYY-MM-DD)"),
+):
+    a_start_ts, a_end_ts = _to_ts_range(period_a_start, period_a_end)
+    b_start_ts, b_end_ts = _to_ts_range(period_b_start, period_b_end)
+
+    cases_a = list_cases_between(a_start_ts, a_end_ts)
+    cases_b = list_cases_between(b_start_ts, b_end_ts)
+
+    summary_a = _summarize_period(cases_a, period_a_start, period_a_end)
+    summary_b = _summarize_period(cases_b, period_b_start, period_b_end)
+
+    return {
+        "period_a": summary_a,
+        "period_b": summary_b,
+        "delta": {
+            "total_cases": summary_b["total_cases"] - summary_a["total_cases"],
+            "approve_rate": round(summary_b["decision_rates"]["APPROVE"] - summary_a["decision_rates"]["APPROVE"], 4),
+            "refer_rate": round(summary_b["decision_rates"]["REFER"] - summary_a["decision_rates"]["REFER"], 4),
+            "reject_rate": round(summary_b["decision_rates"]["REJECT"] - summary_a["decision_rates"]["REJECT"], 4),
+            "human_review_rate": round(summary_b["human_review_rate"] - summary_a["human_review_rate"], 4),
+        },
+    }

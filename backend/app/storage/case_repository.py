@@ -111,6 +111,25 @@ def list_review_queue() -> list[CaseResult]:
     return [CaseResult.model_validate_json(row["payload_json"]) for row in rows]
 
 
+def list_cases_between(start_ts: str, end_ts: str) -> list[CaseResult]:
+    with _DB_LOCK:
+        conn = _connect()
+        try:
+            rows = conn.execute(
+                """
+                SELECT payload_json
+                FROM cases
+                WHERE created_at >= ? AND created_at < ?
+                ORDER BY created_at DESC
+                """,
+                (start_ts, end_ts),
+            ).fetchall()
+        finally:
+            conn.close()
+
+    return [CaseResult.model_validate_json(row["payload_json"]) for row in rows]
+
+
 def case_count() -> int:
     with _DB_LOCK:
         conn = _connect()
