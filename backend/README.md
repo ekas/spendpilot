@@ -17,5 +17,3 @@ Key endpoints:
 - GET /cases/review-queue
 - POST /cases/create
 
-This is a hackathon-safe demo of a multi-agent consumer credit workflow:
-Data Credibility Agent, Affordability Agent, Credit Risk Agent, Manager Agent, and deterministic policy engine.
