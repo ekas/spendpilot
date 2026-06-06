@@ -1,0 +1,13 @@
+{
+  "dataset_id": 573,
+  "dataset_name": "South German Credit",
+  "dataset_version": "UCI-2020",
+  "download_url": "https://archive.ics.uci.edu/static/public/573/south+german+credit+update.zip",
+  "license": "CC BY 4.0",
+  "sha256": "0b40d40eb7321693d559e247a556f88a6cc8df8489c3cb2ae084db7592584551",
+  "excluded_scoring_features": [
+    "age",
+    "foreign_worker",
+    "personal_status_sex"
+  ]
+}
