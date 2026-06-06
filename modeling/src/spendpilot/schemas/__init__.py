@@ -20,6 +20,13 @@ from spendpilot.schemas.feedback import (
     VerificationStatus,
 )
 from spendpilot.schemas.outcome import OutcomeEvent, OutcomeSource, PaymentStatus
+from spendpilot.schemas.modeling import (
+    BenchmarkContext,
+    FeedbackRoutingProposal,
+    ManagerNarrative,
+    ModelArtifactManifest,
+    ModelProvenance,
+)
 
 __all__ = [
     "AgentId",
@@ -27,6 +34,7 @@ __all__ = [
     "AgentReport",
     "AgentReportDelta",
     "AnalysisRound",
+    "BenchmarkContext",
     "CaseSnapshot",
     "CheckStatus",
     "CreditProduct",
@@ -35,9 +43,13 @@ __all__ = [
     "EvidenceKind",
     "EvidenceReference",
     "FeedbackEvent",
+    "FeedbackRoutingProposal",
     "FeedbackSource",
     "FeedbackType",
     "FeatureContribution",
+    "ManagerNarrative",
+    "ModelArtifactManifest",
+    "ModelProvenance",
     "PolicyRuleHit",
     "OutcomeEvent",
     "OutcomeSource",

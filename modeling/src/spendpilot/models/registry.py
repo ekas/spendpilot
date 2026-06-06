@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from spendpilot.models.contracts import ModelAdapter
 from spendpilot.schemas.agent_report import AgentId
+from spendpilot.schemas.modeling import MetricValue, ModelProvenance
 
 
 class ModelStatus(StrEnum):
@@ -25,6 +26,13 @@ class ModelDescriptor(BaseModel):
     model_name: str = Field(min_length=1)
     model_version: str = Field(min_length=1)
     status: ModelStatus = ModelStatus.DEVELOPMENT
+    provenance: ModelProvenance = ModelProvenance.RULES
+    artifact_hash: str | None = Field(
+        default=None,
+        pattern=r"^sha256:[a-fA-F0-9]{64}$",
+    )
+    training_config: dict[str, MetricValue] = Field(default_factory=dict)
+    validation_report_ref: str | None = None
 
 
 class ModelRegistry:
