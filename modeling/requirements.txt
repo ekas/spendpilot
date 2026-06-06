@@ -1,0 +1,15 @@
+# Install the local SpendPilot package and all modeling capabilities.
+-e .
+
+# Development and validation
+pytest>=8.3,<9
+
+# Tabular modeling and explainability
+numpy>=2,<3
+pandas>=2.2,<4
+scikit-learn>=1.5,<2
+shap>=0.46,<1
+xgboost>=2.1,<4
+
+# Optional Manager-assistant HTTP clients
+httpx>=0.28,<1

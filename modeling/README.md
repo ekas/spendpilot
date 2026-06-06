@@ -15,6 +15,13 @@ python -m venv .venv
 .venv/bin/python -m pip install -e '.[dev,ml,llm]'
 ```
 
+Alternatively, install the same complete dependency set from the conventional
+requirements file:
+
+```bash
+.venv/bin/python -m pip install -r requirements.txt
+```
+
 Build the local artifacts and run the governed workflow:
 
 ```bash
