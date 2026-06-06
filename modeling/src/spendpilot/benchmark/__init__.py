@@ -3,6 +3,7 @@
 from spendpilot.benchmark.south_german import (
     BenchmarkConfig,
     download_south_german_credit,
+    load_benchmark_context,
     load_south_german_credit,
     run_south_german_benchmark,
 )
@@ -10,6 +11,7 @@ from spendpilot.benchmark.south_german import (
 __all__ = [
     "BenchmarkConfig",
     "download_south_german_credit",
+    "load_benchmark_context",
     "load_south_german_credit",
     "run_south_german_benchmark",
 ]

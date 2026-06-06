@@ -299,6 +299,30 @@ def run_south_german_benchmark(
     )
 
 
+def load_benchmark_context(report_path: Path | str) -> BenchmarkContext:
+    """Load only approved aggregate benchmark fields for manager context."""
+
+    path = Path(report_path)
+    report = json.loads(path.read_text())
+    metrics = report["evaluation"]["models"]["xgboost"]
+    return BenchmarkContext(
+        dataset_name=report["dataset"]["name"],
+        dataset_version=report["dataset"]["version"],
+        metrics={
+            "roc_auc_mean": metrics["roc_auc_mean"],
+            "roc_auc_std": metrics["roc_auc_std"],
+            "pr_auc_mean": metrics["pr_auc_mean"],
+            "brier_score_mean": metrics["brier_score_mean"],
+            "expected_calibration_error_mean": metrics[
+                "expected_calibration_error_mean"
+            ],
+        },
+        excluded_features=tuple(report["excluded_features"]),
+        limitations=tuple(report["limitations"]),
+        report_ref=str(path),
+    )
+
+
 def _expected_calibration_error(expected, probability, bins: int = 10) -> float:
     import numpy as np
 
