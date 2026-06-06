@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from spendpilot.schemas.agent_report import AgentId
 
@@ -67,3 +67,10 @@ class FeedbackRoutingProposal(BaseModel):
     feedback_id: str = Field(min_length=1)
     proposed_targets: tuple[AgentId, ...] = Field(min_length=1)
     rationale_codes: tuple[str, ...] = Field(min_length=1)
+
+    @field_validator("proposed_targets", "rationale_codes")
+    @classmethod
+    def values_must_be_unique(cls, values: tuple) -> tuple:
+        if len(values) != len(set(values)):
+            raise ValueError("routing proposal values must be unique")
+        return values

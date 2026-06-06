@@ -1,7 +1,10 @@
-"""Deterministic manager scaffold for specialist communication."""
+"""Deterministic manager with optional non-authoritative LLM assistance."""
+
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from spendpilot.assistants.contracts import ManagerAssistant
 from spendpilot.schemas.agent_report import (
     AgentId,
     AgentReport,
@@ -14,9 +17,18 @@ from spendpilot.schemas.feedback import (
     FeedbackType,
     VerificationStatus,
 )
+from spendpilot.schemas.modeling import BenchmarkContext, ManagerNarrative
 
 
 REQUIRED_AGENTS = frozenset(AgentId)
+
+
+class ManagerAssistantStatus(StrEnum):
+    """Whether optional language-model assistance completed safely."""
+
+    NOT_CONFIGURED = "not_configured"
+    COMPLETED = "completed"
+    FALLBACK = "fallback"
 
 
 class ManagerReport(BaseModel):
@@ -37,10 +49,23 @@ class ManagerReport(BaseModel):
     proposed_action: Recommendation
     reason_codes: tuple[str, ...] = Field(min_length=1)
     summary: str = Field(min_length=1)
+    narrative: ManagerNarrative | None = None
+    assistant_status: ManagerAssistantStatus = (
+        ManagerAssistantStatus.NOT_CONFIGURED
+    )
 
 
 class ManagerAgent:
     """Validates, compares, and summarizes specialist reports."""
+
+    def __init__(
+        self,
+        *,
+        assistant: ManagerAssistant | None = None,
+        benchmark_context: BenchmarkContext | None = None,
+    ) -> None:
+        self._assistant = assistant
+        self._benchmark_context = benchmark_context
 
     def consolidate(
         self,
@@ -96,7 +121,7 @@ class ManagerAgent:
             missing_agents=missing_agents,
             disagreement=disagreement,
         )
-        return ManagerReport(
+        report = ManagerReport(
             case_id=reports[0].case_id,
             snapshot_id=reports[0].snapshot_id,
             analysis_round_id=reports[0].analysis_round_id,
@@ -119,6 +144,25 @@ class ManagerAgent:
                 missing_agents=missing_agents,
                 disagreement=disagreement,
             ),
+        )
+        if self._assistant is None:
+            return report
+        try:
+            narrative = self._assistant.narrate(
+                report,
+                self._benchmark_context,
+            )
+        except Exception:
+            return report.model_copy(
+                update={
+                    "assistant_status": ManagerAssistantStatus.FALLBACK,
+                }
+            )
+        return report.model_copy(
+            update={
+                "narrative": narrative,
+                "assistant_status": ManagerAssistantStatus.COMPLETED,
+            }
         )
 
     def route_feedback(
@@ -145,8 +189,12 @@ class ManagerAgent:
             raise ValueError("feedback references unknown specialist reports")
 
         targets: set[AgentId]
+        allowed_targets: set[AgentId]
+        mandatory_targets: set[AgentId]
         if feedback.feedback_type is FeedbackType.APPEAL:
             targets = set(REQUIRED_AGENTS)
+            allowed_targets = set(REQUIRED_AGENTS)
+            mandatory_targets = set(REQUIRED_AGENTS)
         elif feedback.feedback_type is FeedbackType.MODEL_CHALLENGE:
             if not feedback.related_report_ids:
                 raise ValueError(
@@ -156,12 +204,34 @@ class ManagerAgent:
                 reports_by_id[report_id].agent_id
                 for report_id in feedback.related_report_ids
             }
+            allowed_targets = set(targets)
+            mandatory_targets = set()
         else:
             targets = {AgentId.CREDIBILITY}
             targets.update(
                 reports_by_id[report_id].agent_id
                 for report_id in feedback.related_report_ids
             )
+            allowed_targets = set(REQUIRED_AGENTS)
+            mandatory_targets = {AgentId.CREDIBILITY}
+
+        if self._assistant is not None:
+            try:
+                proposal = self._assistant.propose_feedback_routing(
+                    feedback=feedback,
+                    previous_reports=previous_reports,
+                    allowed_targets=frozenset(allowed_targets),
+                )
+                proposed = set(proposal.proposed_targets)
+                if proposal.feedback_id != feedback.feedback_id:
+                    raise ValueError("routing proposal feedback id differs")
+                if not proposed.issubset(allowed_targets):
+                    raise ValueError("routing proposal contains forbidden target")
+                if not mandatory_targets.issubset(proposed):
+                    raise ValueError("routing proposal omits mandatory target")
+                targets = proposed
+            except Exception:
+                pass
 
         return feedback.model_copy(
             update={

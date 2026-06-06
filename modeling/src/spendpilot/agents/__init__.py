@@ -3,12 +3,17 @@
 from spendpilot.agents.affordability import AffordabilityAgent
 from spendpilot.agents.credibility import CredibilityAgent
 from spendpilot.agents.credit_risk import CreditRiskAgent
-from spendpilot.agents.manager import ManagerAgent, ManagerReport
+from spendpilot.agents.manager import (
+    ManagerAgent,
+    ManagerAssistantStatus,
+    ManagerReport,
+)
 
 __all__ = [
     "AffordabilityAgent",
     "CredibilityAgent",
     "CreditRiskAgent",
     "ManagerAgent",
+    "ManagerAssistantStatus",
     "ManagerReport",
 ]
