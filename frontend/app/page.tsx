@@ -74,7 +74,7 @@ export default function ApplicationPage() {
   } = useAnalysis();
 
   const isAnalyzing = phase === "analyzing";
-  const canAnalyze = documents.length > 0 && !isAnalyzing;
+  const canAnalyze = !isAnalyzing;
 
   const handleAnalyze = async () => {
     const result = await startAnalysis(toApplicantInput(applicant));
@@ -93,9 +93,9 @@ export default function ApplicationPage() {
           Explainable Fintech Credibility
         </h1>
         <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
-          Upload your financial documents. Four specialized AI agents analyze
-          your data in parallel, communicate findings, and produce a transparent,
-          auditable credibility assessment — no black boxes.
+          Enter the applicant data and optionally add supporting documents.
+          Specialized agents analyze the submitted facts in parallel and
+          produce a transparent, auditable assessment.
         </p>
       </div>
 
@@ -149,7 +149,7 @@ export default function ApplicationPage() {
         <div className="flex items-center justify-between mt-6 pt-5 border-t border-border">
           <p className="text-xs text-muted-foreground">
             {documents.length === 0
-              ? "Upload at least one document to begin analysis"
+              ? "Documents are optional. Missing evidence will be reported and may require human review."
               : `${documents.length} document${documents.length > 1 ? "s" : ""} ready for analysis`}
           </p>
           <Button

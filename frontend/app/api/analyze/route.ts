@@ -49,7 +49,9 @@ async function handleMultipart(request: Request) {
   const files = form.getAll("files").filter((f) => f instanceof File) as File[];
 
   if (!files.length) {
-    return NextResponse.json({ error: "No files provided" }, { status: 400 });
+    const applicant = parseApplicantFromForm(form);
+    const result = await runCase(applicant);
+    return NextResponse.json(caseResultToAnalysis(result));
   }
 
   const caseId = crypto.randomUUID().slice(0, 8);
@@ -130,7 +132,7 @@ async function handleJson(body: AnalyzeBody) {
         document_signals: {
           numeric_hints: {} as Record<string, number>,
           consistency_flags: [] as string[],
-          coverage_score: 0,
+          ...(documentNames.length ? { coverage_score: 0 } : {}),
           income_verified_from_docs: false,
           unreadable_files: [] as string[],
         },

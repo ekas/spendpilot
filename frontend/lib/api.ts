@@ -39,6 +39,24 @@ export async function runAnalysis(
   files: File[],
   applicant?: ApplicantInput
 ): Promise<AnalysisResult> {
+  if (!files.length) {
+    const res = await fetch(apiUrl("/api/analyze"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        documents: [],
+        applicant: applicant ?? {},
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? "Analysis failed");
+    }
+
+    return res.json();
+  }
+
   const formData = new FormData();
   files.forEach((f) => formData.append("files", f));
 

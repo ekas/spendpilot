@@ -47,8 +47,6 @@ export function useAnalysis() {
         .map((d) => fileMapRef.current.get(d.id))
         .filter((f): f is File => f !== undefined);
 
-      if (!files.length) return;
-
       setPhase("analyzing");
       setError(null);
 
