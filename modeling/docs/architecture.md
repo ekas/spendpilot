@@ -21,7 +21,12 @@ modify specialist scores, or issue final credit decisions.
   utilization features.
 
 Each agent wraps a versioned model adapter and returns the same `AgentReport`
-contract. Production adapters will use monotonic XGBoost and TreeSHAP.
+contract. The demo uses deterministic credibility rules plus monotonic
+XGBoost affordability and credit-risk models. XGBoost native contribution
+output provides TreeSHAP explanations.
+
+All specialist scores use one convention: `0` is lower adverse risk and `1`
+is higher adverse risk.
 
 ### Manager agent
 
@@ -32,9 +37,10 @@ The manager receives the frozen specialist reports and:
 - prepares a bounded summary for a human reviewer;
 - preserves every specialist score and evidence reference unchanged.
 
-The initial scaffold uses deterministic summarization. A quantized
-Phi-4-mini-instruct adapter can later translate the structured summary into
-reviewer-facing language without changing its facts.
+Deterministic consolidation remains authoritative. An optional pretrained
+4-bit Phi-4-mini-instruct adapter translates structured reports into
+reviewer-facing language and proposes feedback targets. Schema validation and
+Manager allowlists reject malformed or unauthorized output.
 
 ### Policy engine
 
@@ -59,6 +65,10 @@ resolution.
 Repayment observations are handled by a separate offline learning subsystem.
 They create mature outcome labels and point-in-time datasets, but cannot modify
 the active model registry or production decision workflow.
+
+The South German Credit model is a research benchmark only. Its aggregate
+metrics and limitations may be supplied to the Manager, but it cannot score a
+SpendPilot case because the feature populations do not match.
 
 ## Runtime Boundaries
 

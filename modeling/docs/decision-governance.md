@@ -62,6 +62,8 @@ review trigger.
   decision record.
 - All feedback-triggered rounds require human review.
 - Feedback rationale is never passed into a scoring model.
+- Phi never receives unrestricted feedback rationale and cannot expand the
+  deterministic routing allowlist.
 
 ## Outcome Governance
 
@@ -72,3 +74,14 @@ review trigger.
 - Outcome ingestion cannot promote, replace, or deploy a production model.
 - Candidate validation and human approval are recorded separately from
   deployment.
+
+## Demo Model Governance
+
+- Synthetic artifacts are development models and never described as trained
+  on real applicants.
+- South German Credit produces aggregate research context only.
+- Dataset and artifact hashes are checked before use.
+- Model binaries, source datasets, generated reports, and Phi weights remain
+  outside Git.
+- Phi output may fail closed to deterministic Manager behavior without
+  interrupting policy evaluation.

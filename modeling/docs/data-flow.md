@@ -2,10 +2,12 @@
 
 ## 1. Intake
 
-1. Record applicant consent and requested credit product.
-2. Collect bureau, identity, income, and transaction data.
-3. Validate formats, timestamps, ownership, and source signatures.
-4. Tokenize applicant identifiers and isolate raw PII.
+1. Accept the current backend `Applicant` payload.
+2. Apply document hints conservatively: lower verified income and employment,
+   but higher expenses, debt, utilization, and delinquencies.
+3. Replace document names with opaque hashes.
+4. Exclude applicant name and raw document text from the modeling snapshot.
+5. Tokenize applicant identifiers and isolate raw PII.
 
 ## 2. Snapshot
 
@@ -35,6 +37,8 @@ Each result includes a model version, calibrated score, recommendation,
 reason codes, feature contributions, evidence references, limitations, and
 monotonicity-check status.
 
+Scores are adverse-risk probabilities: lower is safer and higher is riskier.
+
 ## 4. Manager Consolidation
 
 The manager validates the report set and emits:
@@ -46,6 +50,10 @@ The manager validates the report set and emits:
 - a concise review summary.
 
 The manager cannot issue a final decision.
+
+When enabled, Phi receives only compact structured reports, deltas, reason
+codes, opaque evidence references, and aggregate benchmark context. Its
+narrative is stored separately from deterministic consolidation.
 
 ## 5. Policy Evaluation
 
