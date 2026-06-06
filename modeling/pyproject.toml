@@ -17,6 +17,8 @@ dev = [
   "pytest>=8.3,<9",
 ]
 ml = [
+  "numpy>=2,<3",
+  "pandas>=2.2,<4",
   "scikit-learn>=1.5,<2",
   "shap>=0.46,<1",
   "xgboost>=2.1,<4",
