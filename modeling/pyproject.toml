@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "spendpilot"
+version = "0.1.0"
+description = "Explainable, human-governed consumer-credit decision orchestration"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.10,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+]
+ml = [
+  "numpy>=2,<3",
+  "pandas>=2.2,<4",
+  "scikit-learn>=1.5,<2",
+  "shap>=0.46,<1",
+  "xgboost>=2.1,<4",
+]
+llm = [
+  "httpx>=0.28,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spendpilot"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["src"]
+testpaths = ["tests"]

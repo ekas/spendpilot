@@ -1,0 +1,89 @@
+# Decision Governance
+
+## Authority
+
+- Specialist agents provide evidence-bound recommendations.
+- The manager coordinates communication and summarizes disagreements.
+- Authorized humans resolve review tasks.
+- Only the deterministic policy engine creates final decision records.
+
+## Mandatory Human Review
+
+Review is required when:
+
+- specialist recommendations disagree;
+- any specialist recommends `DECLINE` or `REFER`;
+- required evidence or a required report is missing;
+- model confidence, calibration, or monotonicity checks fail;
+- the case is outside the validated model population;
+- a fraud, identity, fairness, or policy guardrail triggers;
+- an applicant appeals a decision.
+
+## Model Controls
+
+Every production model must have:
+
+- a registered owner, purpose, and validated population;
+- immutable training-data and feature lineage;
+- a versioned artifact and approval status;
+- calibration, stability, performance, and fairness results;
+- monotonic constraints documented by feature;
+- reason-code mappings reviewed by risk and compliance;
+- a rollback target and retirement process.
+
+A logistic scorecard remains the audit benchmark for monotonic XGBoost credit
+models. Material disagreement between benchmark and production models is a
+review trigger.
+
+## Explanation Rules
+
+- Explanations must reference factors actually used by the model.
+- Reason codes must map to evidence-backed feature contributions.
+- The manager may rewrite approved reasons for clarity but may not invent,
+  remove, or reorder principal reasons without a deterministic rule.
+- Raw chain-of-thought is not an explanation artifact.
+
+## Audit and Security
+
+- Store raw PII separately from agent and trace records.
+- Use immutable snapshot hashes and append-only decision events.
+- Propagate case, workflow, trace, model, and policy version identifiers.
+- Record all human views, challenges, overrides, and resolutions.
+- Never place PII, credentials, or raw documents in telemetry baggage.
+
+## Feedback Governance
+
+- Only authorized reviewers and verified applicant appeals may trigger
+  re-analysis.
+- Applicant feedback must reference evidence present in the revised snapshot.
+- The Manager selects feedback targets; submitters cannot address model workers
+  directly.
+- Every accepted feedback event creates a new snapshot, round, report set, and
+  decision record.
+- All feedback-triggered rounds require human review.
+- Feedback rationale is never passed into a scoring model.
+- No language-model provider receives unrestricted feedback rationale or can
+  expand the deterministic routing allowlist.
+
+## Outcome Governance
+
+- Repayment events are append-only and deduplicated by source event.
+- The primary label is 90+ days past due within 12 months of approval.
+- Negative labels remain immature until the full observation window closes.
+- Training examples use the original decision snapshot and cutoff.
+- Outcome ingestion cannot promote, replace, or deploy a production model.
+- Candidate validation and human approval are recorded separately from
+  deployment.
+
+## Demo Model Governance
+
+- Synthetic artifacts are development models and never described as trained
+  on real applicants.
+- South German Credit produces aggregate research context only.
+- Dataset and artifact hashes are checked before use.
+- Model binaries, source datasets, generated reports, and API keys remain
+  outside Git.
+- Hosted-model output may fail closed to deterministic Manager behavior
+  without interrupting policy evaluation.
+- Local GGUF output is held to the same fallback rules. A successful smoke test
+  does not promote Phi-1.5 or grant it decision authority.

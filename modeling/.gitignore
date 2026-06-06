@@ -1,0 +1,60 @@
+# Byte-compiled files and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution and packaging
+build/
+dist/
+downloads/
+*.egg-info/
+.eggs/
+*.egg
+wheels/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test, coverage, type-checking, and lint caches
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.hypothesis/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and local databases
+*.log
+*.sqlite
+*.sqlite3
+
+# Local data and model artifacts
+/artifacts/
+/data/
+/models/
+*.bin
+*.gguf
+*.joblib
+*.onnx
+*.pkl
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
