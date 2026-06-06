@@ -32,6 +32,10 @@ function RecBadge({ rec }: { rec: "APPROVE" | "REFER" | "REJECT" }) {
 export function SpecialistAgentPanel({ report }: { report: AgentReport }) {
   const data = mapAgentDisplay(report);
   const Icon = icons[report.agentId as AgentId] ?? ShieldCheck;
+  const adverseRisk =
+    typeof report.metrics.adverseRiskPercent === "number"
+      ? report.metrics.adverseRiskPercent
+      : 100 - data.score;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col h-full">
@@ -46,7 +50,9 @@ export function SpecialistAgentPanel({ report }: { report: AgentReport }) {
 
       <div className="flex items-baseline gap-2 mb-2">
         <span className={cn("text-4xl font-bold", data.color)}>{data.score}</span>
-        <span className="text-sm text-muted-foreground">/100</span>
+        <span className="text-sm text-muted-foreground">
+          /100 readiness
+        </span>
       </div>
 
       <div className="h-1.5 rounded-full bg-muted overflow-hidden mb-3">
@@ -56,7 +62,12 @@ export function SpecialistAgentPanel({ report }: { report: AgentReport }) {
         />
       </div>
 
-      <p className="text-xs text-muted-foreground mb-4">{data.description}</p>
+      <p className="text-xs text-muted-foreground mb-1">
+        {data.description}
+      </p>
+      <p className="text-xs font-medium text-foreground mb-4">
+        Estimated adverse risk: {adverseRisk}%
+      </p>
 
       <p className="text-xs font-semibold text-foreground mb-2">Top Issues</p>
       <ul className="space-y-1.5 mb-4 flex-1">

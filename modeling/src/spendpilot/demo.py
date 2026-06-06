@@ -20,6 +20,7 @@ from spendpilot.ingestion import (
 from spendpilot.models import (
     CredibilityRulesAdapter,
     MonotonicXGBoostAdapter,
+    TransparentScorecardAdapter,
 )
 from spendpilot.orchestration import (
     DecisionWorkflow,
@@ -113,6 +114,53 @@ def build_demo_workflow(
         ),
         policy_engine=PolicyEngine(),
         review_queue=HumanReviewQueue(),
+    )
+
+
+def build_runtime_workflow(
+    artifact_root: Path | str,
+    *,
+    assistant: ManagerAssistant | None = None,
+    benchmark_context: BenchmarkContext | None = None,
+) -> tuple[DecisionWorkflow, str]:
+    """Use trained artifacts when available, otherwise transparent scorecards."""
+
+    root = Path(artifact_root)
+    required_artifacts = tuple(
+        root / agent_id.value / filename
+        for agent_id in (AgentId.AFFORDABILITY, AgentId.CREDIT_RISK)
+        for filename in ("model.json", "manifest.json", "calibration.json")
+    )
+    if all(path.is_file() for path in required_artifacts):
+        return (
+            build_demo_workflow(
+                root,
+                assistant=assistant,
+                benchmark_context=benchmark_context,
+            ),
+            "trained_synthetic_xgboost",
+        )
+
+    specialists = (
+        CredibilityAgent(CredibilityRulesAdapter()),
+        AffordabilityAgent(
+            TransparentScorecardAdapter(AgentId.AFFORDABILITY)
+        ),
+        CreditRiskAgent(
+            TransparentScorecardAdapter(AgentId.CREDIT_RISK)
+        ),
+    )
+    return (
+        DecisionWorkflow(
+            specialists=specialists,
+            manager=ManagerAgent(
+                assistant=assistant,
+                benchmark_context=benchmark_context,
+            ),
+            policy_engine=PolicyEngine(),
+            review_queue=HumanReviewQueue(),
+        ),
+        "transparent_scorecard_fallback",
     )
 
 

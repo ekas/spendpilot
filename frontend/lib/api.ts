@@ -48,6 +48,20 @@ export async function runAnalysis(
     formData.append("monthly_income", String(applicant.monthly_income));
   if (applicant?.monthly_expenses !== undefined)
     formData.append("monthly_expenses", String(applicant.monthly_expenses));
+  if (applicant?.requested_amount !== undefined)
+    formData.append("requested_amount", String(applicant.requested_amount));
+  if (applicant?.existing_debt !== undefined)
+    formData.append("existing_debt", String(applicant.existing_debt));
+  if (applicant?.credit_utilization !== undefined)
+    formData.append("credit_utilization", String(applicant.credit_utilization));
+  if (applicant?.delinquencies_12m !== undefined)
+    formData.append("delinquencies_12m", String(applicant.delinquencies_12m));
+  if (applicant?.employment_months !== undefined)
+    formData.append("employment_months", String(applicant.employment_months));
+  if (applicant?.overdrafts_90d !== undefined)
+    formData.append("overdrafts_90d", String(applicant.overdrafts_90d));
+  if (applicant?.income_verified !== undefined)
+    formData.append("income_verified", String(applicant.income_verified));
 
   const res = await fetch(apiUrl("/api/analyze"), {
     method: "POST",

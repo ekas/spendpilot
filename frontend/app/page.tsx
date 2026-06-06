@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Shield,
@@ -16,6 +17,11 @@ import { AgentPipeline } from "@/components/agents/AgentPipeline";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useAnalysis } from "@/hooks/useAnalysis";
+import {
+  ApplicantDetailsForm,
+  toApplicantInput,
+  type ApplicantFormValues,
+} from "@/components/upload/ApplicantDetailsForm";
 
 const agents = [
   {
@@ -46,6 +52,18 @@ const agents = [
 
 export default function ApplicationPage() {
   const router = useRouter();
+  const [applicant, setApplicant] = useState<ApplicantFormValues>({
+    name: "Case applicant",
+    monthly_income: 4500,
+    monthly_expenses: 2800,
+    requested_amount: 8000,
+    existing_debt: 1200,
+    credit_utilization_percent: 35,
+    delinquencies_12m: 0,
+    employment_months: 18,
+    overdrafts_90d: 0,
+    income_verified: false,
+  });
   const {
     phase,
     documents,
@@ -59,8 +77,8 @@ export default function ApplicationPage() {
   const canAnalyze = documents.length > 0 && !isAnalyzing;
 
   const handleAnalyze = async () => {
-    await startAnalysis();
-    router.push("/dashboard");
+    const result = await startAnalysis(toApplicantInput(applicant));
+    if (result) router.push("/dashboard");
   };
 
   return (
@@ -110,6 +128,12 @@ export default function ApplicationPage() {
             Customer Application
           </h2>
         </div>
+
+        <ApplicantDetailsForm
+          value={applicant}
+          onChange={setApplicant}
+          disabled={isAnalyzing}
+        />
 
         <FileUploadZone
           onFilesSelected={addFiles}

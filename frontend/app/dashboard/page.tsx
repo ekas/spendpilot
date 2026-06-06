@@ -94,7 +94,7 @@ export default function DashboardPage() {
             Executive Overview
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Comprehensive analysis of your company&apos;s monthly spend ·{" "}
+            Explainable affordability, evidence, and credit assessment ·{" "}
             {snapshot.applicantName}
           </p>
         </div>
@@ -109,7 +109,7 @@ export default function DashboardPage() {
       {/* Top tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         <MetricCard
-          label="Total Spend"
+          label="Monthly Expenses"
           value={formatCompactCurrency(metrics.totalSpend)}
           icon={User}
           accent="violet"
@@ -118,7 +118,7 @@ export default function DashboardPage() {
           trendLabel={`vs ${metrics.priorMonthLabel}`}
         />
         <MetricCard
-          label="Budget Utilization"
+          label="Income Used"
           value={formatPercent(metrics.budgetUtilization, 0)}
           icon={PieChart}
           accent="emerald"
@@ -144,13 +144,12 @@ export default function DashboardPage() {
           trendLabel={`vs ${metrics.priorMonthShort}`}
         />
         <MetricCard
-          label="Transactions"
-          value={metrics.transactions.toLocaleString()}
+          label="Evidence Items"
+          value={snapshot.documents.length.toLocaleString()}
           icon={CreditCard}
           accent="rose"
-          trend="up"
-          trendPercent={`${formatPercent(metrics.transactionsTrend)}`}
-          trendLabel={`vs ${metrics.priorMonthLabel}`}
+          progress={snapshot.validationStatus === "valid" ? 100 : 50}
+          progressSubtext={snapshot.validationStatus.replace("-", " ")}
         />
       </div>
 

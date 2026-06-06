@@ -25,14 +25,22 @@ export interface DocumentSignals {
 
 export interface Contributor {
   feature: string;
+  feature_label?: string;
+  value?: number | string | boolean | null;
   impact: number;
   direction: string;
   explanation: string;
+  reason_code?: string;
 }
 
 export interface AgentReport {
   agent_name: string;
   score: number;
+  score_semantics?: "adverse_risk" | "readiness";
+  calibrated_probability?: number | null;
+  confidence?: number | null;
+  model_name?: string;
+  model_source?: string;
   model_version: string;
   top_contributors: Contributor[];
   monotonicity_checks?: string;
@@ -41,6 +49,9 @@ export interface AgentReport {
   confidence_status: string;
   recommendation: string;
   summary: string;
+  limitations?: string[];
+  report_id?: string;
+  analysis_round_id?: string;
 }
 
 export interface ManagerReport {
@@ -49,14 +60,24 @@ export interface ManagerReport {
   requested_reanalysis: string[];
   reviewer_summary: string;
   readable_explanation: string;
+  analysis_round_id?: string;
+  assistant_status?: string;
 }
 
 export interface PolicyDecision {
   final_decision: string;
   final_authority?: string;
   policy_flags: string[];
+  policy_rules?: Array<{
+    rule_id: string;
+    description: string;
+  }>;
   requires_human_review: boolean;
   reason: string;
+  decision_id?: string;
+  review_id?: string | null;
+  finalized?: boolean;
+  policy_version?: string;
 }
 
 export interface CaseResult {
@@ -66,6 +87,13 @@ export interface CaseResult {
   specialist_reports: AgentReport[];
   manager_report: ManagerReport;
   policy_decision: PolicyDecision;
+  model_runtime?: {
+    source: string;
+    score_semantics: "adverse_risk";
+    snapshot_id: string;
+    snapshot_hash: string;
+    pii_minimized: boolean;
+  };
   created_at?: string;
 }
 

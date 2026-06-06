@@ -8,6 +8,7 @@ import { saveDocumentRecord } from "@/lib/backend/case-repository";
 import { uploadToStorage } from "@/lib/supabase/storage";
 import { caseResultToAnalysis } from "@/lib/backend/transform";
 import { applicantFromHints } from "@/lib/backend/api-helpers";
+import { parseApplicantFromForm } from "@/lib/backend/api-helpers";
 import type { UploadedDocument } from "@/lib/types";
 
 interface AnalyzeBody {
@@ -87,17 +88,13 @@ async function handleMultipart(request: Request) {
     });
   }
 
-  const name = String(form.get("name") ?? "Applicant");
-  const applicant = applicantFromHints(
-    name,
+  const hintedApplicant = applicantFromHints(
+    String(form.get("name") ?? "Applicant"),
     analysis.document_signals.numeric_hints,
-    analysis.evidence_refs
+    analysis.evidence_refs,
   );
-
-  const income = form.get("monthly_income");
-  if (income) applicant.monthly_income = parseFloat(String(income));
-  const expenses = form.get("monthly_expenses");
-  if (expenses) applicant.monthly_expenses = parseFloat(String(expenses));
+  const applicant = parseApplicantFromForm(form, hintedApplicant);
+  applicant.documents = analysis.evidence_refs;
 
   applicant.document_text = analysis.document_text;
   applicant.document_signals = {

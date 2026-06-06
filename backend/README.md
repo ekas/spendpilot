@@ -18,6 +18,8 @@ Persistence:
 
 Key endpoints:
 
+- GET /modeling/health
+- POST /modeling/analyze
 - GET /cases/samples
 - GET /cases
 - GET /cases/review-queue
@@ -59,3 +61,15 @@ Postman:
 
 This is a hackathon-safe demo of a multi-agent monthly spend intelligence workflow:
 Data Quality Agent, Spend Efficiency Agent, Budget Variance Agent, Manager Agent, and deterministic spend policy engine.
+
+The `/modeling` endpoints connect the frontend credit workflow to the package
+under `../modeling`. `POST /modeling/analyze` accepts the backend-compatible
+applicant contract, removes names and raw document text before scoring, runs
+the three specialists in parallel, and returns adverse-risk probabilities,
+reason codes, evidence references, Manager consolidation, deterministic policy,
+and human-review routing.
+
+Set `SPENDPILOT_MODEL_ARTIFACT_ROOT` to override the default
+`modeling/artifacts/models` location. When trained artifacts are unavailable,
+the endpoint uses transparent development scorecards and reports that fallback
+in `model_runtime.source`.

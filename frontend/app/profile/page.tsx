@@ -82,7 +82,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-3 shrink-0">
               <div className="text-right">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Credibility
+                  Decision readiness
                 </p>
                 <p className="text-2xl font-bold text-foreground tabular-nums">
                   {analysis.credibility.overallScore}
@@ -114,7 +114,7 @@ export default function ProfilePage() {
           accent="emerald"
         />
         <MetricCard
-          label="Avg Score"
+          label="Avg Readiness"
           value={String(avgScore)}
           icon={TrendingUp}
           accent="violet"
@@ -186,7 +186,7 @@ export default function ProfilePage() {
           <Card>
             <CardHeader
               title="Credibility Breakdown"
-              subtitle="Agent scores from latest case"
+              subtitle="Higher readiness means lower modeled risk"
             />
             {analysis ? (
               <div className="space-y-3">
@@ -199,14 +199,14 @@ export default function ProfilePage() {
                   score={analysis.credibility.affordabilityScore}
                 />
                 <ScoreRow
-                  label="Credit Risk"
+                  label="Credit Readiness"
                   score={analysis.credibility.creditRiskScore}
                 />
               </div>
             ) : (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Shield className="h-4 w-4 shrink-0" />
-                <span>Run an analysis to see your credibility scores.</span>
+                <span>Run an analysis to see the readiness scores.</span>
               </div>
             )}
           </Card>

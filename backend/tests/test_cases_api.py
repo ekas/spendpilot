@@ -165,3 +165,55 @@ def test_compare_periods_returns_side_by_side_metrics() -> None:
     assert "delta" in body
     assert body["period_a"]["total_cases"] == 0
     assert body["period_b"]["total_cases"] >= 1
+
+
+def test_modeling_analysis_uses_governed_agent_contracts() -> None:
+    response = client.post(
+        "/modeling/analyze",
+        json={
+            "applicant": {
+                "name": "Private Applicant",
+                "monthly_income": 4200,
+                "monthly_expenses": 2100,
+                "requested_amount": 6000,
+                "existing_debt": 800,
+                "credit_utilization": 0.22,
+                "delinquencies_12m": 0,
+                "employment_months": 28,
+                "overdrafts_90d": 0,
+                "income_verified": True,
+                "documents": [
+                    "private_id_document.pdf",
+                    "private_bank_statement.pdf",
+                    "private_income_proof.pdf",
+                ],
+                "document_text": "Private Applicant earns 4200 per month.",
+            }
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["specialist_reports"]) == 3
+    assert body["model_runtime"]["score_semantics"] == "adverse_risk"
+    assert body["model_runtime"]["pii_minimized"] is True
+    assert body["policy_decision"]["final_authority"].startswith(
+        "Deterministic policy engine"
+    )
+    assert all(
+        report["score_semantics"] == "adverse_risk"
+        for report in body["specialist_reports"]
+    )
+    model_payload = str(body["specialist_reports"]) + str(
+        body["manager_report"]
+    )
+    assert "Private Applicant" not in model_payload
+    assert "earns 4200" not in model_payload
+    assert body["applicant"]["document_text"] == ""
+
+
+def test_modeling_health_reports_artifact_or_scorecard_runtime() -> None:
+    response = client.get("/modeling/health")
+
+    assert response.status_code == 200
+    assert response.json()["fallback"] == "transparent_scorecard"

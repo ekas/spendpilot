@@ -30,6 +30,16 @@ function scoreTo100(score: number): number {
   return Math.round(score * 100);
 }
 
+function adverseRisk(report: BackendAgentReport): number {
+  return report.score_semantics === "adverse_risk"
+    ? report.score
+    : 1 - report.score;
+}
+
+function readinessScore(report: BackendAgentReport): number {
+  return scoreTo100(1 - adverseRisk(report));
+}
+
 function mapSeverity(reason: string): RiskLevel {
   if (
     reason.includes("FRAUD") ||
@@ -62,31 +72,45 @@ function mapDecision(status: string): DecisionOutcome {
 
 function transformAgentReport(report: BackendAgentReport): AgentReport {
   const agentId = agentIdFromName(report.agent_name);
+  const readiness = readinessScore(report);
+  const riskPercent = scoreTo100(adverseRisk(report));
 
   return {
     agentId,
     agentName: report.agent_name,
     status: "complete",
     completedAt: new Date().toISOString(),
-    score: scoreTo100(report.score),
-    confidence: 0.85,
+    score: readiness,
+    confidence: report.confidence ?? 0.85,
     summary: report.summary,
     findings: report.top_contributors.map((c, i) => ({
       id: `${agentId}-f-${i}`,
-      category: c.feature.replace(/_/g, " "),
+      category: c.reason_code ?? c.feature.replace(/_/g, " "),
       severity: c.direction.includes("increases") ? "medium" : "low",
-      title: c.feature.replace(/_/g, " "),
+      title: c.feature_label ?? c.feature.replace(/_/g, " "),
       description: c.explanation,
       evidence: report.evidence_refs,
       confidence: 0.8,
     })),
-    metrics: Object.fromEntries(
-      report.top_contributors.map((c) => [c.feature, c.impact])
-    ),
+    metrics: {
+      adverseRiskPercent: riskPercent,
+      readinessScore: readiness,
+      ...Object.fromEntries(
+        report.top_contributors.flatMap((c) => [
+          [c.feature, c.impact],
+          ...(c.value !== undefined
+            ? [[`${c.feature}_value`, String(c.value)]]
+            : []),
+        ])
+      ),
+    },
     reasoning: [
       ...report.reason_codes.map((r) => `Reason code: ${r}`),
       `Recommendation: ${report.recommendation}`,
-      `Model: ${report.model_version}`,
+      `Adverse-risk estimate: ${riskPercent}%`,
+      `Model: ${report.model_name ?? report.agent_name} ${report.model_version}`,
+      ...(report.model_source ? [`Runtime: ${report.model_source}`] : []),
+      ...(report.limitations ?? []),
     ],
   };
 }
@@ -102,7 +126,10 @@ function buildAgentMessages(caseResult: CaseResult): AgentMessage[] {
       to: "broadcast",
       timestamp: new Date().toISOString(),
       type: "analysis",
-      content: `${report.agent_name}: ${report.summary} (score: ${report.score}, rec: ${report.recommendation})`,
+      content:
+        `${report.agent_name}: ${report.summary} ` +
+        `(adverse risk: ${scoreTo100(adverseRisk(report))}%, ` +
+        `recommendation: ${report.recommendation})`,
     });
   }
 
@@ -147,54 +174,62 @@ function buildConflicts(caseResult: CaseResult): ConflictItem[] {
 
 function buildPolicyChecks(caseResult: CaseResult): PolicyCheck[] {
   const { policy_decision: policy, specialist_reports: reports } = caseResult;
+  const evidence = reports.find(
+    (report) => report.agent_name === "Data Credibility Agent"
+  );
+  const affordability = reports.find(
+    (report) => report.agent_name === "Affordability Agent"
+  );
+  const credit = reports.find(
+    (report) => report.agent_name === "Credit Risk Agent"
+  );
 
   const checks: PolicyCheck[] = [
     {
       id: "pol-evidence",
-      rule: "Evidence credibility above 45%",
-      status:
-        (reports.find((r) => r.agent_name === "Data Credibility Agent")?.score ??
-          0) >= 0.45
-          ? "pass"
-          : "fail",
-      details: `Score: ${scoreTo100(reports[0]?.score ?? 0)}`,
+      rule: "Evidence adverse risk within policy tolerance",
+      status: recommendationStatus(evidence?.recommendation),
+      details: `Adverse risk: ${evidence ? scoreTo100(adverseRisk(evidence)) : "unavailable"}%`,
     },
     {
       id: "pol-affordability",
-      rule: "Affordability above 35%",
-      status:
-        (reports.find((r) => r.agent_name === "Affordability Agent")?.score ??
-          0) >= 0.35
-          ? "pass"
-          : "fail",
-      details: `Score: ${scoreTo100(reports[1]?.score ?? 0)}`,
+      rule: "Affordability adverse risk within policy tolerance",
+      status: recommendationStatus(affordability?.recommendation),
+      details: `Adverse risk: ${affordability ? scoreTo100(adverseRisk(affordability)) : "unavailable"}%`,
     },
     {
       id: "pol-credit",
-      rule: "Credit risk above 35%",
-      status:
-        (reports.find((r) => r.agent_name === "Credit Risk Agent")?.score ??
-          0) >= 0.35
-          ? "pass"
-          : "fail",
-      details: `Score: ${scoreTo100(reports[2]?.score ?? 0)}`,
+      rule: "Credit adverse risk within policy tolerance",
+      status: recommendationStatus(credit?.recommendation),
+      details: `Adverse risk: ${credit ? scoreTo100(adverseRisk(credit)) : "unavailable"}%`,
     },
   ];
 
-  for (const flag of policy.policy_flags) {
+  for (const rule of policy.policy_rules ?? []) {
     checks.push({
-      id: `pol-${flag}`,
-      rule: flag.replace(/POLICY_/g, "").replace(/_/g, " "),
-      status: flag.includes("APPROVE")
-        ? "pass"
-        : flag.includes("REFER")
-          ? "warning"
-          : "fail",
-      details: policy.reason,
+      id: `pol-${rule.rule_id}`,
+      rule: rule.rule_id.replace(/_/g, " "),
+      status:
+        rule.rule_id === "UNANIMOUS_AUTOMATIC_APPROVAL"
+          ? "pass"
+          : rule.rule_id === "HUMAN_REVIEW_REQUIRED"
+            ? "warning"
+            : "fail",
+      details: rule.description,
     });
   }
 
   return checks;
+}
+
+function recommendationStatus(
+  recommendation: string | undefined
+): PolicyCheck["status"] {
+  if (recommendation === "REJECT") return "fail";
+  if (recommendation === "REFER") return "warning";
+  return recommendation === "APPROVE" || recommendation === "PASS"
+    ? "pass"
+    : "pending";
 }
 
 function deriveSpendCategories(applicant: CaseResult["applicant"]): SpendCategory[] {
@@ -285,11 +320,12 @@ function deriveSavings(caseResult: CaseResult): SavingsOpportunity[] {
 
 function overallRiskLevel(caseResult: CaseResult): RiskLevel {
   const avg =
-    caseResult.specialist_reports.reduce((s, r) => s + r.score, 0) /
+    caseResult.specialist_reports.reduce((s, r) => s + adverseRisk(r), 0) /
     caseResult.specialist_reports.length;
 
-  if (caseResult.status === "REJECT" || avg < 0.4) return "critical";
-  if (caseResult.status === "REFER" || avg < 0.6) return "medium";
+  if (caseResult.status === "REJECT" || avg >= 0.7) return "critical";
+  if (avg >= 0.55) return "high";
+  if (caseResult.status === "REFER" || avg >= 0.35) return "medium";
   return "low";
 }
 
@@ -316,7 +352,11 @@ export function caseResultToAnalysis(
       status: "complete",
       completedAt: new Date().toISOString(),
       score: scoreTo100(
-        caseResult.specialist_reports.reduce((s, r) => s + r.score, 0) /
+        1 -
+          caseResult.specialist_reports.reduce(
+            (s, r) => s + adverseRisk(r),
+            0
+          ) /
           caseResult.specialist_reports.length
       ),
       confidence: 0.86,
@@ -397,14 +437,15 @@ export function caseResultToAnalysis(
     conflicts: buildConflicts(caseResult),
     policyChecks: buildPolicyChecks(caseResult),
     credibility: {
-      evidenceScore: scoreTo100(evidence?.score ?? 0),
-      affordabilityScore: scoreTo100(affordability?.score ?? 0),
-      creditRiskScore: scoreTo100(credit?.score ?? 0),
+      evidenceScore: evidence ? readinessScore(evidence) : 0,
+      affordabilityScore: affordability ? readinessScore(affordability) : 0,
+      creditRiskScore: credit ? readinessScore(credit) : 0,
       overallScore: scoreTo100(
-        ((evidence?.score ?? 0) +
-          (affordability?.score ?? 0) +
-          (credit?.score ?? 0)) /
-          3
+        1 -
+          ((evidence ? adverseRisk(evidence) : 1) +
+            (affordability ? adverseRisk(affordability) : 1) +
+            (credit ? adverseRisk(credit) : 1)) /
+            3
       ),
       riskLevel: overallRiskLevel(caseResult),
       confidence: 0.86,
