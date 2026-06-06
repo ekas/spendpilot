@@ -174,3 +174,78 @@ def test_cli_can_train_reduced_artifacts(tmp_path, capsys) -> None:
     assert (output / "affordability" / "model.json").exists()
     assert (output / "credit_risk" / "model.json").exists()
     assert "synthetic-20260606-v1" in capsys.readouterr().out
+
+
+def test_cli_evaluates_an_external_json_case(tmp_path, capsys) -> None:
+    artifact_root = tmp_path / "external-models"
+    train_synthetic_models(
+        artifact_root,
+        SyntheticTrainingConfig(
+            sample_count=700,
+            n_estimators=20,
+            seed=20260606,
+        ),
+    )
+    input_path = tmp_path / "external.json"
+    input_path.write_text(
+        json.dumps(
+            {
+                "case_id": "external_case_1",
+                "applicant_ref": "external_customer_1",
+                "applicant": {
+                    "name": "Sensitive Name",
+                    "monthly_income": 3800,
+                    "monthly_expenses": 2100,
+                    "requested_amount": 7500,
+                    "existing_debt": 1600,
+                    "credit_utilization": 0.34,
+                    "delinquencies_12m": 0,
+                    "employment_months": 22,
+                    "overdrafts_90d": 1,
+                    "income_verified": True,
+                    "documents": [
+                        "id_document.pdf",
+                        "bank_statement.pdf",
+                        "income_proof.pdf",
+                    ],
+                    "document_text": "Sensitive Name private content.",
+                },
+            }
+        )
+    )
+
+    exit_code = main(
+        [
+            "evaluate-input",
+            "--input",
+            str(input_path),
+            "--model-root",
+            str(artifact_root),
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "external_case_1" in output
+    assert "Sensitive Name" not in output
+    assert "private content" not in output
+
+    report_path = tmp_path / "external-report.html"
+    exit_code = main(
+        [
+            "explainability-report",
+            "--input",
+            str(input_path),
+            "--model-root",
+            str(artifact_root),
+            "--output",
+            str(report_path),
+        ]
+    )
+
+    report = report_path.read_text()
+    assert exit_code == 0
+    assert "external_case_1" in report
+    assert "Inputs accepted from outside the demo" in report
+    assert "Sensitive Name" not in report
+    assert "private content" not in report

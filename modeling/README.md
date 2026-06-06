@@ -23,6 +23,32 @@ Build the local artifacts and run the governed workflow:
 .venv/bin/python -m spendpilot.cli demo
 ```
 
+Evaluate data supplied outside the built-in demo:
+
+```bash
+.venv/bin/python -m spendpilot.cli evaluate-input \
+  --input examples/external-cases.json
+
+.venv/bin/python -m spendpilot.cli explainability-report \
+  --input examples/external-cases.json \
+  --output artifacts/reports/external-case.html
+```
+
+The JSON may contain one case, a list of cases, or a `{"cases": [...]}` batch
+with up to 100 cases. Each case accepts:
+
+- case ID, snapshot ID, applicant reference, product, and currency;
+- requested amount, monthly income and expenses, and outstanding debt;
+- credit utilization, late payments, recent overdrafts, and employment months;
+- income-verification status and document identifiers;
+- optional document-extraction hints, coverage, and consistency flags.
+
+Applicant names are optional, and applicant references are preferred. Names
+and raw document text, when supplied by the source system, are removed before
+model scoring, Manager processing, generated reports, or model-assistant
+prompts. The same adapter can later be used behind an HTTP API, database
+importer, or message consumer.
+
 Create an OpenRouter API key and expose it only in the local shell:
 
 ```bash
@@ -59,11 +85,11 @@ Generate the self-contained offline explainability report:
   --output artifacts/reports/explainability-demo.html
 ```
 
-The HTML needs no web server or external assets. It includes the three sample
-cases, specialist scores, local TreeSHAP contributions, evidence references,
-policy and human-review routing, benchmark metrics, and local-model reliability.
-Names, raw documents, model files, API keys, and generated reports remain
-outside Git.
+The HTML needs no web server or external assets. It includes case tabs, an
+input-to-agents-to-Manager-to-policy workflow, specialist scores, interactive
+TreeSHAP explanations, privacy-safe evidence descriptions, policy and
+human-review routing, benchmark metrics, and local-model reliability. Names,
+raw documents, model files, API keys, and generated reports remain outside Git.
 
 ## Validation
 

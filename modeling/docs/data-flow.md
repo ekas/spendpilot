@@ -2,12 +2,17 @@
 
 ## 1. Intake
 
-1. Accept the current backend `Applicant` payload.
+1. Accept the current backend `Applicant` payload or the equivalent validated
+   external JSON request.
 2. Apply document hints conservatively: lower verified income and employment,
    but higher expenses, debt, utilization, and delinquencies.
 3. Replace document names with opaque hashes.
 4. Exclude applicant name and raw document text from the modeling snapshot.
 5. Tokenize applicant identifiers and isolate raw PII.
+
+The file-based external adapter accepts one case, a list, or a batch of up to
+100 cases. It is the initial transport implementation; the same request
+contract can be populated by an API, database import, or event consumer later.
 
 ## 2. Snapshot
 

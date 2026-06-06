@@ -14,7 +14,8 @@ from spendpilot.benchmark import (
     download_south_german_credit,
     run_south_german_benchmark,
 )
-from spendpilot.demo import run_sample_cases
+from spendpilot.demo import run_external_cases, run_sample_cases
+from spendpilot.ingestion import load_external_cases
 from spendpilot.reports import generate_explainability_report
 from spendpilot.training import (
     SyntheticTrainingConfig,
@@ -87,6 +88,20 @@ def main(arguments: list[str] | None = None) -> int:
             )
         )
         return 0
+    if options.command == "evaluate-input":
+        requests = load_external_cases(options.input)
+        results = run_external_cases(
+            options.model_root,
+            requests,
+            benchmark_report_path=options.benchmark_report,
+        )
+        print(
+            json.dumps(
+                [result.model_dump(mode="json") for result in results],
+                indent=2,
+            )
+        )
+        return 0
     if options.command == "local-llm-smoke":
         if options.gguf_path is None:
             parser.error(
@@ -108,6 +123,7 @@ def main(arguments: list[str] | None = None) -> int:
             benchmark_report_path=options.benchmark_report,
             smoke_report_path=options.smoke_report,
             output_path=options.output,
+            input_path=options.input,
         )
         print(output.resolve())
         return 0
@@ -149,6 +165,19 @@ def _parser() -> argparse.ArgumentParser:
         default=DEFAULT_MODEL_ROOT,
     )
     demo.add_argument(
+        "--benchmark-report",
+        type=Path,
+        default=DEFAULT_BENCHMARK_REPORT,
+    )
+
+    external = subparsers.add_parser("evaluate-input")
+    external.add_argument("--input", type=Path, required=True)
+    external.add_argument(
+        "--model-root",
+        type=Path,
+        default=DEFAULT_MODEL_ROOT,
+    )
+    external.add_argument(
         "--benchmark-report",
         type=Path,
         default=DEFAULT_BENCHMARK_REPORT,
@@ -202,6 +231,11 @@ def _parser() -> argparse.ArgumentParser:
         "--output",
         type=Path,
         default=DEFAULT_EXPLAINABILITY_REPORT,
+    )
+    explainability.add_argument(
+        "--input",
+        type=Path,
+        help="Optional external JSON case or case batch.",
     )
     return parser
 

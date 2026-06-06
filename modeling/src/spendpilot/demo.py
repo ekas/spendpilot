@@ -12,7 +12,11 @@ from spendpilot.agents import (
 )
 from spendpilot.assistants.contracts import ManagerAssistant
 from spendpilot.benchmark import load_benchmark_context
-from spendpilot.ingestion import BackendApplicant, BackendInputAdapter
+from spendpilot.ingestion import (
+    BackendApplicant,
+    BackendInputAdapter,
+    ExternalCaseRequest,
+)
 from spendpilot.models import (
     CredibilityRulesAdapter,
     MonotonicXGBoostAdapter,
@@ -23,7 +27,7 @@ from spendpilot.orchestration import (
     PolicyEngine,
     WorkflowResult,
 )
-from spendpilot.schemas import AgentId, BenchmarkContext
+from spendpilot.schemas import AgentId, BenchmarkContext, CaseSnapshot
 
 
 SAMPLE_APPLICANTS = (
@@ -120,6 +124,40 @@ def run_sample_cases(
 ) -> tuple[WorkflowResult, ...]:
     """Run the three backend examples without retaining their names."""
 
+    return run_case_snapshots(
+        artifact_root,
+        sample_case_snapshots(),
+        assistant=assistant,
+        benchmark_report_path=benchmark_report_path,
+    )
+
+
+def run_external_cases(
+    artifact_root: Path | str,
+    requests: tuple[ExternalCaseRequest, ...],
+    *,
+    assistant: ManagerAssistant | None = None,
+    benchmark_report_path: Path | str | None = None,
+) -> tuple[WorkflowResult, ...]:
+    """Run validated externally supplied cases through the same workflow."""
+
+    return run_case_snapshots(
+        artifact_root,
+        tuple(request.to_snapshot() for request in requests),
+        assistant=assistant,
+        benchmark_report_path=benchmark_report_path,
+    )
+
+
+def run_case_snapshots(
+    artifact_root: Path | str,
+    snapshots: tuple[CaseSnapshot, ...],
+    *,
+    assistant: ManagerAssistant | None = None,
+    benchmark_report_path: Path | str | None = None,
+) -> tuple[WorkflowResult, ...]:
+    """Run already-sanitized snapshots through one governed workflow."""
+
     benchmark_context = None
     if benchmark_report_path is not None:
         report_path = Path(benchmark_report_path)
@@ -130,14 +168,19 @@ def run_sample_cases(
         assistant=assistant,
         benchmark_context=benchmark_context,
     )
+    return tuple(workflow.run(snapshot) for snapshot in snapshots)
+
+
+def sample_case_snapshots() -> tuple[CaseSnapshot, ...]:
+    """Return the PII-minimized snapshots used by the offline demo."""
+
     adapter = BackendInputAdapter()
-    results = []
-    for index, applicant in enumerate(SAMPLE_APPLICANTS, start=1):
-        snapshot = adapter.to_snapshot(
+    return tuple(
+        adapter.to_snapshot(
             applicant,
             case_id=f"demo_case_{index}",
             snapshot_id="snapshot_1",
             applicant_ref=f"demo_applicant_{index}",
         )
-        results.append(workflow.run(snapshot))
-    return tuple(results)
+        for index, applicant in enumerate(SAMPLE_APPLICANTS, start=1)
+    )

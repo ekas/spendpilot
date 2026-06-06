@@ -1,0 +1,36 @@
+{
+  "cases": [
+    {
+      "case_id": "external_case_001",
+      "snapshot_id": "snapshot_1",
+      "applicant_ref": "customer_reference_001",
+      "product": "personal_loan",
+      "currency": "EUR",
+      "applicant": {
+        "monthly_income": 3800,
+        "monthly_expenses": 2100,
+        "requested_amount": 7500,
+        "existing_debt": 1600,
+        "credit_utilization": 0.34,
+        "delinquencies_12m": 0,
+        "employment_months": 22,
+        "overdrafts_90d": 1,
+        "income_verified": true,
+        "documents": [
+          "id_document.pdf",
+          "bank_statement.pdf",
+          "income_proof.pdf"
+        ],
+        "document_text": "",
+        "document_signals": {
+          "coverage_score": 0.82,
+          "consistency_flags": [],
+          "numeric_hints": {
+            "monthly_income": 3750,
+            "monthly_expenses": 2150
+          }
+        }
+      }
+    }
+  ]
+}

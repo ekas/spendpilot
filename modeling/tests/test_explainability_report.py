@@ -110,17 +110,36 @@ def test_report_contains_cases_explanations_and_no_pii(tmp_path) -> None:
 
     report = output.read_text()
     assert all(f"demo_case_{index}" in report for index in range(1, 4))
-    assert "TreeSHAP feature contributions" in report
+    assert "Key factors behind this score" in report
     assert "data-direction=\"increases risk\"" in report
     assert "data-direction=\"protective\"" in report
     assert "South German Credit" in report
-    assert "numeric__duration" in report
+    assert "Duration" in report
     assert "Path SHA-256" in report
     assert "Specialist disagreement" in report
     assert "Human review" in report
-    assert "<script" not in report
+    assert "Input to decision workflow" in report
+    assert "Parallel specialist agents" in report
+    assert "Manager agent" in report
+    assert "Policy engine" in report
+    assert "Governed output" in report
+    assert 'role="tablist"' in report
+    assert 'class="case-tab"' in report
+    assert 'class="agent-node"' in report
+    assert 'class="contribution-row"' in report
+    assert "selectCase" in report
+    assert "Inputs accepted from outside the demo" in report
+    assert "Existing debt compared with monthly income" in report
+    assert "Supporting documents" in report
+    assert "This factor lowers risk" in report
+    assert "Outstanding debt is lower relative to monthly income" in report
+    assert "HIGH_DTI" not in report
+    assert "debt_to_income" not in report
+    assert "document:" not in report
+    assert "<script" in report
     assert "<link" not in report
     assert "src=\"http" not in report
+    assert "href=\"http" not in report
     for forbidden in (
         "Amina Lowrisk",
         "Ben Borderline",

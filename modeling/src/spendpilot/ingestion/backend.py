@@ -17,7 +17,7 @@ class BackendApplicant(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1)
+    name: str = Field(default="redacted_applicant", min_length=1)
     monthly_income: float = Field(gt=0)
     monthly_expenses: float = Field(ge=0)
     requested_amount: float = Field(gt=0)
