@@ -5,9 +5,9 @@ from app.agents import data_credibility_agent, affordability_agent, credit_risk_
 from app.policy.rules import decide
 from app.data.sample_cases import SAMPLE_CASES
 from app.services.document_intelligence import analyze_uploaded_documents, persist_uploaded_documents
+from app.storage.case_repository import case_count, list_cases as repo_list_cases, list_review_queue as repo_list_review_queue, save_case, set_human_decision
 
 router = APIRouter(prefix="/cases", tags=["cases"])
-STORE = {}
 
 def run_case(applicant: Applicant, case_id: str | None = None) -> CaseResult:
     case_id = case_id or str(uuid4())[:8]
@@ -26,7 +26,7 @@ def run_case(applicant: Applicant, case_id: str | None = None) -> CaseResult:
         manager_report=manager,
         policy_decision=policy,
     )
-    STORE[case_id] = result
+    save_case(result)
     return result
 
 
@@ -115,22 +115,21 @@ async def create_case_with_upload(
 
 @router.get("", response_model=list[CaseResult])
 def list_cases():
-    if not STORE:
+    if case_count() == 0:
         load_samples()
-    return list(STORE.values())
+    return repo_list_cases()
 
 @router.get("/review-queue", response_model=list[CaseResult])
 def review_queue():
-    if not STORE:
+    if case_count() == 0:
         load_samples()
-    return [c for c in STORE.values() if c.policy_decision.requires_human_review]
+    return repo_list_review_queue()
 
 @router.post("/{case_id}/human-decision")
 def human_decision(case_id: str, decision: str):
-    case = STORE.get(case_id)
-    if not case:
-        raise HTTPException(status_code=404, detail="case not found")
     if decision.upper() not in {"APPROVE", "REJECT", "REFER"}:
         raise HTTPException(status_code=422, detail="decision must be one of APPROVE, REJECT, REFER")
-    case.status = decision.upper()
+    updated = set_human_decision(case_id, decision.upper())
+    if not updated:
+        raise HTTPException(status_code=404, detail="case not found")
     return {"case_id": case_id, "human_decision": decision.upper(), "message":"Human reviewer decision recorded for demo."}

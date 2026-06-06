@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 uploads/
+data/*.db
+tests/*.db
+.pytest_cache/

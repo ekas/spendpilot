@@ -11,6 +11,11 @@ uvicorn app.main:app --reload --port 8000
 
 Open http://127.0.0.1:8000/docs
 
+Persistence:
+
+- Cases are persisted in SQLite (`backend/data/decisionos.db`) instead of in-memory storage.
+- Optional override for DB path: set environment variable `DECISIONOS_DB_PATH`.
+
 Key endpoints:
 
 - GET /cases/samples

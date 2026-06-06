@@ -1,14 +1,21 @@
+import os
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
+TEST_DB_PATH = Path(__file__).parent / "decisionos_test.db"
+os.environ["DECISIONOS_DB_PATH"] = str(TEST_DB_PATH)
+
 from app.main import app
-from app.routes.cases import STORE
+from app.storage.case_repository import clear_all_cases, init_db
 
 
 client = TestClient(app)
 
 
 def setup_function() -> None:
-    STORE.clear()
+    init_db()
+    clear_all_cases()
 
 
 def test_create_case_json_returns_case_result() -> None:
