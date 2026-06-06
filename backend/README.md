@@ -12,6 +12,7 @@ uvicorn app.main:app --reload --port 8000
 Open http://127.0.0.1:8000/docs
 
 Key endpoints:
+
 - GET /cases/samples
 - GET /cases
 - GET /cases/review-queue
@@ -19,7 +20,26 @@ Key endpoints:
 - POST /cases/create-with-upload (multipart form + files)
 
 Upload flow:
+
 - Use `POST /cases/create-with-upload` with applicant fields as form fields and one or more files in `files`.
 - The backend extracts machine-readable signals from uploaded documents (json/csv/text and best-effort regex extraction), stores files under `backend/uploads/<case_id>/`, and injects derived signals into specialist agents.
 - Agents then include document-derived evidence in affordability, risk, and data-credibility analysis.
 
+Testing:
+
+- Install dependencies from `requirements.txt`.
+- Run API tests from the backend directory:
+
+```bash
+pytest -q
+```
+
+Postman:
+
+- Import collection file: `backend/postman/DecisionOS_Backend.postman_collection.json`
+- Import environment file: `backend/postman/DecisionOS_Local.postman_environment.json`
+- Set `base_url` variable (default: `http://127.0.0.1:8000`)
+- For upload requests, attach one or more local files to the `files` form field.
+
+This is a hackathon-safe demo of a multi-agent consumer credit workflow:
+Data Credibility Agent, Affordability Agent, Credit Risk Agent, Manager Agent, and deterministic policy engine.
