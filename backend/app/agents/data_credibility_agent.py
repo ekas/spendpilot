@@ -5,6 +5,10 @@ def run(applicant: Applicant) -> AgentReport:
     reasons = []
     contributors = []
     refs = applicant.documents or ["application_form"]
+    signals = applicant.document_signals or {}
+    numeric_hints = signals.get("numeric_hints", {})
+    consistency_flags = signals.get("consistency_flags", [])
+    coverage_score = float(signals.get("coverage_score", 0.0))
 
     required = ["bank_statement", "id_document", "income_proof"]
     missing = [d for d in required if not any(d in x.lower() for x in applicant.documents)]
@@ -22,6 +26,24 @@ def run(applicant: Applicant) -> AgentReport:
         score -= 0.25
         reasons.append("INVALID_FIELDS")
         contributors.append(Contributor(feature="field_validation", impact=0.25, direction="increases risk", explanation="Application contains invalid financial fields."))
+
+    if coverage_score < 0.25 and applicant.documents:
+        score -= 0.10
+        reasons.append("LOW_DOCUMENT_COVERAGE")
+        contributors.append(Contributor(feature="document_coverage", impact=0.10, direction="increases risk", explanation="Uploaded documents provided limited machine-readable financial signals."))
+
+    if consistency_flags:
+        score -= min(0.2, 0.08 * len(consistency_flags))
+        reasons.extend(consistency_flags)
+        contributors.append(Contributor(feature="document_consistency", impact=min(0.2, 0.08 * len(consistency_flags)), direction="increases risk", explanation="Detected potential inconsistencies in uploaded documents."))
+
+    hinted_income = numeric_hints.get("monthly_income")
+    if hinted_income and applicant.monthly_income > 0:
+        delta_ratio = abs(float(hinted_income) - applicant.monthly_income) / applicant.monthly_income
+        if delta_ratio > 0.2:
+            score -= 0.12
+            reasons.append("INCOME_MISMATCH_WITH_DOCUMENTS")
+            contributors.append(Contributor(feature="income_mismatch", impact=0.12, direction="increases risk", explanation="Document-extracted income materially differs from provided application income."))
 
     score = max(0.0, min(1.0, score))
     recommendation = "PASS" if score >= 0.70 else "REFER" if score >= 0.45 else "REJECT"

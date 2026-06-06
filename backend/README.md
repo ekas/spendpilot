@@ -16,4 +16,10 @@ Key endpoints:
 - GET /cases
 - GET /cases/review-queue
 - POST /cases/create
+- POST /cases/create-with-upload (multipart form + files)
+
+Upload flow:
+- Use `POST /cases/create-with-upload` with applicant fields as form fields and one or more files in `files`.
+- The backend extracts machine-readable signals from uploaded documents (json/csv/text and best-effort regex extraction), stores files under `backend/uploads/<case_id>/`, and injects derived signals into specialist agents.
+- Agents then include document-derived evidence in affordability, risk, and data-credibility analysis.
 

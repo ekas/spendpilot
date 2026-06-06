@@ -12,7 +12,9 @@ class Applicant(BaseModel):
     employment_months: int = 0
     overdrafts_90d: int = 0
     income_verified: bool = False
-    documents: List[str] = []
+    documents: List[str] = Field(default_factory=list)
+    document_text: str = ""
+    document_signals: Dict[str, Any] = Field(default_factory=dict)
 
 class CaseCreate(BaseModel):
     applicant: Applicant
