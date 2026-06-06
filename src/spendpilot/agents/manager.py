@@ -44,7 +44,9 @@ class ManagerAgent:
         if len(reports_by_agent) != len(reports):
             raise ValueError("only one report per specialist agent is allowed")
 
-        missing_agents = tuple(sorted(REQUIRED_AGENTS - reports_by_agent, key=str))
+        missing_agents = tuple(
+            sorted(REQUIRED_AGENTS - reports_by_agent.keys(), key=str)
+        )
         recommendations = {report.recommendation for report in reports}
         disagreement = len(recommendations) > 1
 
