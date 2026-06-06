@@ -1,6 +1,9 @@
 import json
 
+import httpx
+
 from spendpilot.agents import ManagerAssistantStatus
+from spendpilot.assistants.local_llama import LlamaCppJSONClient
 from spendpilot.assistants.structured import (
     JSONCompletionResult,
     StructuredManagerAssistant,
@@ -87,6 +90,69 @@ def test_hosted_narrative_cannot_change_policy_result(tmp_path) -> None:
         is ManagerAssistantStatus.COMPLETED
         for result in assisted
     )
+
+
+def test_local_llama_narrative_cannot_change_reports_or_policy(
+    tmp_path,
+) -> None:
+    artifact_root = tmp_path / "local-models"
+    train_synthetic_models(
+        artifact_root,
+        SyntheticTrainingConfig(
+            sample_count=700,
+            n_estimators=20,
+            seed=20260606,
+        ),
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "content": json.dumps(
+                    {
+                        "summary": "Review the deterministic reports.",
+                        "disagreement_explanation": (
+                            "Recommendations remain unchanged."
+                        ),
+                        "reviewer_focus": ["Review reason codes."],
+                        "limitations": ["No decision authority."],
+                    }
+                ),
+                "model": "phi-1.5-local",
+            },
+        )
+
+    assistant = StructuredManagerAssistant(
+        LlamaCppJSONClient(
+            client=httpx.Client(transport=httpx.MockTransport(handler))
+        )
+    )
+    baseline = run_sample_cases(artifact_root)
+    assisted = run_sample_cases(artifact_root, assistant=assistant)
+
+    def report_values(results):
+        return [
+            [
+                (
+                    report.agent_id,
+                    report.score,
+                    report.recommendation,
+                    report.reason_codes,
+                    report.top_contributors,
+                )
+                for report in result.reports
+            ]
+            for result in results
+        ]
+
+    assert report_values(assisted) == report_values(baseline)
+    assert [result.decision.action for result in assisted] == [
+        result.decision.action for result in baseline
+    ]
+    assert [result.decision.finalized for result in assisted] == [
+        result.decision.finalized for result in baseline
+    ]
 
 
 def test_cli_can_train_reduced_artifacts(tmp_path, capsys) -> None:

@@ -30,6 +30,7 @@ class JSONCompletionResult:
     provider: str
     model: str
     request_id: str | None = None
+    latency_ms: float | None = None
 
 
 class JSONCompletionClient(Protocol):
@@ -41,6 +42,7 @@ class JSONCompletionClient(Protocol):
         system: str,
         user: str,
         max_output_tokens: int,
+        json_schema: dict[str, object],
     ) -> JSONCompletionResult:
         """Return one JSON object plus immutable provider metadata."""
 
@@ -99,6 +101,7 @@ class StructuredManagerAssistant:
                 "Do not reveal hidden reasoning."
             ),
             payload=payload,
+            json_schema=_manager_narrative_schema(),
         )
         narrative = ManagerNarrative.model_validate(
             _parse_json_object(response.content)
@@ -108,6 +111,7 @@ class StructuredManagerAssistant:
                 "assistant_provider": response.provider,
                 "assistant_model": response.model,
                 "assistant_request_id": response.request_id,
+                "assistant_latency_ms": response.latency_ms,
             }
         )
 
@@ -142,6 +146,7 @@ class StructuredManagerAssistant:
                 "JSON with feedback_id, proposed_targets, and rationale_codes."
             ),
             payload=payload,
+            json_schema=_feedback_routing_schema(),
         )
         proposal = FeedbackRoutingProposal.model_validate(
             _parse_json_object(response.content)
@@ -151,6 +156,7 @@ class StructuredManagerAssistant:
                 "assistant_provider": response.provider,
                 "assistant_model": response.model,
                 "assistant_request_id": response.request_id,
+                "assistant_latency_ms": response.latency_ms,
             }
         )
 
@@ -159,6 +165,7 @@ class StructuredManagerAssistant:
         *,
         system: str,
         payload: dict[str, object],
+        json_schema: dict[str, object],
     ) -> JSONCompletionResult:
         user = json.dumps(payload, separators=(",", ":"))
         if len(system) + len(user) > MAX_INPUT_CHARACTERS:
@@ -167,6 +174,7 @@ class StructuredManagerAssistant:
             system=system,
             user=user,
             max_output_tokens=MAX_OUTPUT_TOKENS,
+            json_schema=json_schema,
         )
 
 
@@ -183,3 +191,61 @@ def _parse_json_object(text: str) -> dict[str, object]:
     if not isinstance(parsed, dict):
         raise ValueError("Manager assistant response must be one JSON object")
     return parsed
+
+
+def _manager_narrative_schema() -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string", "minLength": 1},
+            "disagreement_explanation": {
+                "type": "string",
+                "minLength": 1,
+            },
+            "reviewer_focus": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "limitations": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+        },
+        "required": [
+            "summary",
+            "disagreement_explanation",
+            "reviewer_focus",
+            "limitations",
+        ],
+        "additionalProperties": False,
+    }
+
+
+def _feedback_routing_schema() -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {
+            "feedback_id": {"type": "string", "minLength": 1},
+            "proposed_targets": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": [agent.value for agent in AgentId],
+                },
+                "minItems": 1,
+                "uniqueItems": True,
+            },
+            "rationale_codes": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 1,
+                "uniqueItems": True,
+            },
+        },
+        "required": [
+            "feedback_id",
+            "proposed_targets",
+            "rationale_codes",
+        ],
+        "additionalProperties": False,
+    }

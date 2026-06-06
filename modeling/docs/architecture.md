@@ -37,11 +37,16 @@ The manager receives the frozen specialist reports and:
 - prepares a bounded summary for a human reviewer;
 - preserves every specialist score and evidence reference unchanged.
 
-Deterministic consolidation remains authoritative. An optional OpenRouter
-assistant translates structured reports into reviewer-facing language and
-proposes feedback targets. The free router's selected model and request ID are
-stored with the narrative. Schema validation and Manager allowlists reject
-malformed or unauthorized output.
+Deterministic consolidation remains authoritative. Optional OpenRouter and
+local llama.cpp assistants translate structured reports into reviewer-facing
+language and propose feedback targets. Provider and model provenance, request
+metadata, and local latency are stored with accepted output. Schema validation
+and Manager allowlists reject malformed or unauthorized output.
+
+The local adapter uses a GGUF path supplied at runtime and a private
+`llama-server` bound to `127.0.0.1`. Phi-1.5 is treated as experimental because
+it is a base model without an embedded chat template. It has no path to
+specialist scores, policy rules, or final decisions.
 
 ### Policy engine
 
@@ -112,3 +117,8 @@ model score
 The audit record stores model versions, policy versions, evidence hashes, human
 actions, and final reason codes. Hidden model chain-of-thought is neither
 requested nor persisted.
+
+The standalone explainability report renders the same stored explanation
+contracts as inline HTML, CSS, and SVG. Positive TreeSHAP values are shown as
+risk-increasing and negative values as protective. The generated report is an
+ignored local artifact and contains no applicant names or raw documents.

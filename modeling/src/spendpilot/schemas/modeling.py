@@ -1,5 +1,6 @@
 """Contracts for model artifacts, benchmarks, and manager assistance."""
 
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import TypeAlias
 
@@ -60,6 +61,7 @@ class ManagerNarrative(BaseModel):
     assistant_provider: str | None = None
     assistant_model: str | None = None
     assistant_request_id: str | None = None
+    assistant_latency_ms: float | None = Field(default=None, ge=0)
 
 
 class FeedbackRoutingProposal(BaseModel):
@@ -73,6 +75,7 @@ class FeedbackRoutingProposal(BaseModel):
     assistant_provider: str | None = None
     assistant_model: str | None = None
     assistant_request_id: str | None = None
+    assistant_latency_ms: float | None = Field(default=None, ge=0)
 
     @field_validator("proposed_targets", "rationale_codes")
     @classmethod
@@ -80,3 +83,48 @@ class FeedbackRoutingProposal(BaseModel):
         if len(values) != len(set(values)):
             raise ValueError("routing proposal values must be unique")
         return values
+
+
+class LocalLLMProbePurpose(StrEnum):
+    """Structured capabilities evaluated by the local-model smoke test."""
+
+    NARRATIVE = "narrative"
+    FEEDBACK_ROUTING = "feedback_routing"
+
+
+class LocalLLMProbe(BaseModel):
+    """One schema-constrained local-model evaluation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    purpose: LocalLLMProbePurpose
+    case_id: str | None = None
+    success: bool
+    schema_valid: bool
+    latency_ms: float | None = Field(default=None, ge=0)
+    narrative: ManagerNarrative | None = None
+    routing_proposal: FeedbackRoutingProposal | None = None
+    fallback_reason: str | None = None
+
+
+class LocalLLMSmokeReport(BaseModel):
+    """Audit report for an experimental local GGUF assistant."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    model_name: str = Field(min_length=1)
+    model_file: str = Field(min_length=1)
+    model_path_hash: str = Field(pattern=r"^sha256:[a-fA-F0-9]{64}$")
+    artifact_hash: str = Field(pattern=r"^sha256:[a-fA-F0-9]{64}$")
+    llama_cpp_version: str = Field(min_length=1)
+    endpoint: str = Field(min_length=1)
+    context_size: int = Field(ge=1)
+    max_output_tokens: int = Field(ge=1)
+    experimental: bool = True
+    promoted: bool = False
+    started_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+    probes: tuple[LocalLLMProbe, ...] = Field(min_length=1)
+    success_rate: float = Field(ge=0, le=1)
+    recommendation: str = Field(min_length=1)

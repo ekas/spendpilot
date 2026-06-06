@@ -50,7 +50,7 @@ benchmark never creates applicant-level SpendPilot scores.
 The default hosted route is `openrouter/free`. OpenRouter may select a
 different free model for each request, so the returned model ID and request ID
 are attached to every accepted Manager narrative. Requests use temperature
-zero, a 256-token output limit, and JSON response mode.
+zero, a 256-token output limit, and strict JSON-schema response mode.
 
 The provider preferences require parameter support, deny endpoints that collect
 data, and request zero-data-retention routing. If no free endpoint can satisfy
@@ -69,6 +69,31 @@ specialists. Invalid JSON, timeouts, missing targets, and unauthorized targets
 fall back to deterministic behavior. The hosted model cannot change snapshots,
 reports, scores, policy rules, or decisions.
 
+## Experimental Local GGUF Assistant
+
+The optional local runtime uses Homebrew `llama.cpp`, Metal acceleration, and a
+loopback-only HTTP server. The model file is supplied through `--gguf-path` or
+`SPENDPILOT_GGUF_PATH`; it is never copied into the repository.
+
+The current smoke target is `phi-1.5.Q4_K_M.gguf`. Phi-1.5 is a pretrained base
+model without an embedded chat template, so it is not promoted even when
+llama.cpp grammar constraints produce schema-valid JSON. Runtime controls are:
+
+```text
+context size:       2048 tokens
+output limit:       256 tokens
+temperature:        0
+parallel requests:  1
+transport:          http://127.0.0.1:8080
+```
+
+The smoke artifact records one-way hashes of the model path and model content,
+the llama.cpp build, latency, schema validity, fallback status, and
+recommendation. Malformed JSON, timeout, server failure, invalid feedback
+targets, or unsupported output falls back to the deterministic Manager. If
+structured reliability is inadequate, the next candidate is
+Phi-4-mini-instruct Q4_K_M rather than granting more authority to Phi-1.5.
+
 ## Local Artifacts
 
 Generated content remains ignored by Git:
@@ -76,7 +101,8 @@ Generated content remains ignored by Git:
 ```text
 data/raw/                         downloaded benchmark source
 artifacts/models/                 XGBoost, calibration, and manifests
-artifacts/reports/                benchmark and evaluation reports
+artifacts/reports/                benchmark, smoke, and HTML reports
+artifacts/logs/                   local llama.cpp server logs
 ```
 
 Committed code, configuration, checksums, seeds, schemas, and tests are

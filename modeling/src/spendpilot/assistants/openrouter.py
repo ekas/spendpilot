@@ -38,6 +38,7 @@ class OpenRouterJSONClient:
         system: str,
         user: str,
         max_output_tokens: int,
+        json_schema: dict[str, object],
     ) -> JSONCompletionResult:
         response = self._client.post(
             OPENROUTER_ENDPOINT,
@@ -54,7 +55,14 @@ class OpenRouterJSONClient:
                 ],
                 "temperature": 0,
                 "max_tokens": max_output_tokens,
-                "response_format": {"type": "json_object"},
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "spendpilot_manager_output",
+                        "strict": True,
+                        "schema": json_schema,
+                    },
+                },
                 "provider": {
                     "data_collection": "deny",
                     "zdr": True,

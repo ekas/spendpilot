@@ -51,11 +51,13 @@ The manager validates the report set and emits:
 
 The manager cannot issue a final decision.
 
-When enabled, OpenRouter receives only compact structured reports, deltas,
-reason codes, opaque evidence references, and aggregate benchmark context. The
-request requires JSON support, denies data-collecting providers, requests
-zero-data-retention routing, and stores the actual selected model. Its
-narrative is stored separately from deterministic consolidation.
+When enabled, OpenRouter or the local llama.cpp adapter receives only compact
+structured reports, deltas, reason codes, opaque evidence references, and
+aggregate benchmark context. Both require schema-valid JSON and store actual
+model provenance. OpenRouter denies data-collecting providers and requests
+zero-data-retention routing. The local adapter binds to loopback and reads the
+GGUF path from a command argument or environment variable. Narratives are
+stored separately from deterministic consolidation.
 
 ## 5. Policy Evaluation
 

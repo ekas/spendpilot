@@ -8,6 +8,13 @@ from spendpilot.assistants.openrouter import (
     OpenRouterJSONClient,
 )
 
+TEST_SCHEMA = {
+    "type": "object",
+    "properties": {"summary": {"type": "string"}},
+    "required": ["summary"],
+    "additionalProperties": False,
+}
+
 
 def test_openrouter_uses_free_router_and_privacy_constraints() -> None:
     captured: dict[str, object] = {}
@@ -41,6 +48,7 @@ def test_openrouter_uses_free_router_and_privacy_constraints() -> None:
         system="Return JSON.",
         user='{"input":"safe"}',
         max_output_tokens=256,
+        json_schema=TEST_SCHEMA,
     )
 
     assert result.provider == "openrouter"
@@ -49,7 +57,14 @@ def test_openrouter_uses_free_router_and_privacy_constraints() -> None:
     assert captured["authorization"] == "Bearer test-key"
     payload = captured["payload"]
     assert payload["model"] == "openrouter/free"
-    assert payload["response_format"] == {"type": "json_object"}
+    assert payload["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "spendpilot_manager_output",
+            "strict": True,
+            "schema": TEST_SCHEMA,
+        },
+    }
     assert payload["provider"] == {
         "data_collection": "deny",
         "zdr": True,
@@ -82,6 +97,7 @@ def test_openrouter_error_does_not_expose_response_body() -> None:
             system="Return JSON.",
             user="{}",
             max_output_tokens=20,
+            json_schema=TEST_SCHEMA,
         )
 
     assert "sensitive provider detail" not in str(exc.value)

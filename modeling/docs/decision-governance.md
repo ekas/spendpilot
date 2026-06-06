@@ -62,8 +62,8 @@ review trigger.
   decision record.
 - All feedback-triggered rounds require human review.
 - Feedback rationale is never passed into a scoring model.
-- OpenRouter never receives unrestricted feedback rationale and cannot expand
-  the deterministic routing allowlist.
+- No language-model provider receives unrestricted feedback rationale or can
+  expand the deterministic routing allowlist.
 
 ## Outcome Governance
 
@@ -85,3 +85,5 @@ review trigger.
   outside Git.
 - Hosted-model output may fail closed to deterministic Manager behavior
   without interrupting policy evaluation.
+- Local GGUF output is held to the same fallback rules. A successful smoke test
+  does not promote Phi-1.5 or grant it decision authority.

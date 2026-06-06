@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from spendpilot.assistants.openrouter import OpenRouterJSONClient
+from spendpilot.assistants.smoke import run_local_llm_smoke
 from spendpilot.assistants.structured import StructuredManagerAssistant
 from spendpilot.benchmark import (
     download_south_german_credit,
     run_south_german_benchmark,
 )
 from spendpilot.demo import run_sample_cases
+from spendpilot.reports import generate_explainability_report
 from spendpilot.training import (
     SyntheticTrainingConfig,
     train_synthetic_models,
@@ -25,6 +28,12 @@ DEFAULT_BENCHMARK_DATA = (
 )
 DEFAULT_BENCHMARK_REPORT = Path(
     "artifacts/reports/south_german_credit.json"
+)
+DEFAULT_LOCAL_SMOKE_REPORT = Path(
+    "artifacts/reports/local-llm-smoke.json"
+)
+DEFAULT_EXPLAINABILITY_REPORT = Path(
+    "artifacts/reports/explainability-demo.html"
 )
 
 
@@ -78,6 +87,30 @@ def main(arguments: list[str] | None = None) -> int:
             )
         )
         return 0
+    if options.command == "local-llm-smoke":
+        if options.gguf_path is None:
+            parser.error(
+                "--gguf-path or SPENDPILOT_GGUF_PATH is required"
+            )
+        report = run_local_llm_smoke(
+            gguf_path=options.gguf_path,
+            model_root=options.model_root,
+            benchmark_report_path=options.benchmark_report,
+            output_path=options.output,
+            host=options.host,
+            port=options.port,
+        )
+        print(report.model_dump_json(indent=2))
+        return 0
+    if options.command == "explainability-report":
+        output = generate_explainability_report(
+            model_root=options.model_root,
+            benchmark_report_path=options.benchmark_report,
+            smoke_report_path=options.smoke_report,
+            output_path=options.output,
+        )
+        print(output.resolve())
+        return 0
     parser.error("a command is required")
     return 2
 
@@ -119,6 +152,56 @@ def _parser() -> argparse.ArgumentParser:
         "--benchmark-report",
         type=Path,
         default=DEFAULT_BENCHMARK_REPORT,
+    )
+
+    smoke = subparsers.add_parser("local-llm-smoke")
+    smoke.add_argument(
+        "--gguf-path",
+        type=Path,
+        default=(
+            Path(os.environ["SPENDPILOT_GGUF_PATH"])
+            if os.environ.get("SPENDPILOT_GGUF_PATH")
+            else None
+        ),
+    )
+    smoke.add_argument(
+        "--model-root",
+        type=Path,
+        default=DEFAULT_MODEL_ROOT,
+    )
+    smoke.add_argument(
+        "--benchmark-report",
+        type=Path,
+        default=DEFAULT_BENCHMARK_REPORT,
+    )
+    smoke.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_LOCAL_SMOKE_REPORT,
+    )
+    smoke.add_argument("--host", default="127.0.0.1")
+    smoke.add_argument("--port", type=int, default=8080)
+
+    explainability = subparsers.add_parser("explainability-report")
+    explainability.add_argument(
+        "--model-root",
+        type=Path,
+        default=DEFAULT_MODEL_ROOT,
+    )
+    explainability.add_argument(
+        "--benchmark-report",
+        type=Path,
+        default=DEFAULT_BENCHMARK_REPORT,
+    )
+    explainability.add_argument(
+        "--smoke-report",
+        type=Path,
+        default=DEFAULT_LOCAL_SMOKE_REPORT,
+    )
+    explainability.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_EXPLAINABILITY_REPORT,
     )
     return parser
 
