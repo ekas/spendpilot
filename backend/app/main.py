@@ -12,7 +12,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="DecisionOS Consumer Credit Demo", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="DecisionOS Spend Intelligence Demo", version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,7 +24,7 @@ app.include_router(cases_router)
 
 @app.get("/")
 def root():
-    return {"name":"DecisionOS Consumer Credit Demo", "docs":"/docs", "frontend":"Run the React app on port 5173"}
+    return {"name":"DecisionOS Spend Intelligence Demo", "docs":"/docs", "frontend":"Run the React app on port 5173"}
 
 @app.get("/health")
 def health():

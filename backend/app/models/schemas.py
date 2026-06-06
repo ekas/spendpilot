@@ -1,23 +1,24 @@
 from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
 
-class Applicant(BaseModel):
-    name: str
-    monthly_income: float
-    monthly_expenses: float
-    requested_amount: float
-    existing_debt: float
-    credit_utilization: float = Field(ge=0, le=1)
-    delinquencies_12m: int = 0
-    employment_months: int = 0
-    overdrafts_90d: int = 0
-    income_verified: bool = False
+class SpendProfile(BaseModel):
+    company_name: str
+    monthly_revenue: float
+    monthly_spend: float
+    planned_budget: float
+    cash_reserve: float
+    budget_variance_ratio: float = Field(ge=0, le=1)
+    anomalous_transactions_30d: int = 0
+    runway_months: int = 0
+    late_payments_90d: int = 0
+    invoice_match_rate: float = Field(ge=0, le=1)
+    books_verified: bool = False
     documents: List[str] = Field(default_factory=list)
     document_text: str = ""
     document_signals: Dict[str, Any] = Field(default_factory=dict)
 
 class CaseCreate(BaseModel):
-    applicant: Applicant
+    profile: SpendProfile
 
 class Contributor(BaseModel):
     feature: str
@@ -46,14 +47,14 @@ class ManagerReport(BaseModel):
 
 class PolicyDecision(BaseModel):
     final_decision: str
-    final_authority: str = "Deterministic policy engine + human reviewer"
+    final_authority: str = "Deterministic spend policy engine + finance reviewer"
     policy_flags: List[str]
-    requires_human_review: bool
+    requires_finance_review: bool
     reason: str
 
 class CaseResult(BaseModel):
     case_id: str
-    applicant: Applicant
+    profile: SpendProfile
     status: str
     specialist_reports: List[AgentReport]
     manager_report: ManagerReport

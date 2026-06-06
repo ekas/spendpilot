@@ -1,17 +1,17 @@
 SAMPLE_CASES = [
     {
-        "name":"Amina Lowrisk", "monthly_income":4200, "monthly_expenses":2100, "requested_amount":6000, "existing_debt":800, "credit_utilization":0.22,
-        "delinquencies_12m":0, "employment_months":28, "overdrafts_90d":0, "income_verified":True,
-        "documents":["id_document.pdf","bank_statement_jan.pdf","income_proof.pdf"]
+        "company_name":"Northstar Logistics", "monthly_revenue":240000, "monthly_spend":162000, "planned_budget":170000, "cash_reserve":98000, "budget_variance_ratio":0.08,
+        "anomalous_transactions_30d":1, "runway_months":8, "late_payments_90d":0, "invoice_match_rate":0.97, "books_verified":True,
+        "documents":["general_ledger_jan.csv","vendor_aging_jan.csv","budget_plan_q1.json"]
     },
     {
-        "name":"Ben Borderline", "monthly_income":3100, "monthly_expenses":2450, "requested_amount":12000, "existing_debt":7200, "credit_utilization":0.68,
-        "delinquencies_12m":0, "employment_months":9, "overdrafts_90d":2, "income_verified":True,
-        "documents":["id_document.pdf","bank_statement_jan.pdf","income_proof.pdf"]
+        "company_name":"Bluebyte Commerce", "monthly_revenue":175000, "monthly_spend":151000, "planned_budget":145000, "cash_reserve":42000, "budget_variance_ratio":0.26,
+        "anomalous_transactions_30d":5, "runway_months":4, "late_payments_90d":2, "invoice_match_rate":0.89, "books_verified":True,
+        "documents":["general_ledger_jan.csv","expenses_breakdown_jan.csv","budget_plan_q1.json"]
     },
     {
-        "name":"Clara Adverse", "monthly_income":2400, "monthly_expenses":2300, "requested_amount":18000, "existing_debt":13000, "credit_utilization":0.91,
-        "delinquencies_12m":2, "employment_months":4, "overdrafts_90d":4, "income_verified":False,
-        "documents":["id_document.pdf"]
+        "company_name":"Vertex Creative Labs", "monthly_revenue":98000, "monthly_spend":112000, "planned_budget":89000, "cash_reserve":12000, "budget_variance_ratio":0.43,
+        "anomalous_transactions_30d":11, "runway_months":2, "late_payments_90d":5, "invoice_match_rate":0.72, "books_verified":False,
+        "documents":["expenses_dump.csv"]
     }
 ]

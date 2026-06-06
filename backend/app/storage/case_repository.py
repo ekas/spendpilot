@@ -51,7 +51,7 @@ def init_db() -> None:
 
 
 def save_case(case: CaseResult) -> None:
-    requires_human_review = 1 if case.policy_decision.requires_human_review else 0
+    requires_human_review = 1 if case.policy_decision.requires_finance_review else 0
     payload_json = case.model_dump_json()
 
     with _DB_LOCK:

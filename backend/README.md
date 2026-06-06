@@ -1,4 +1,4 @@
-# DecisionOS Consumer Credit Backend
+# DecisionOS Company Spend Intelligence Backend
 
 Run:
 
@@ -33,13 +33,13 @@ Period comparison:
 GET /cases/compare-periods?period_a_start=2026-01-01&period_a_end=2026-01-31&period_b_start=2026-02-01&period_b_end=2026-02-28
 ```
 
-- Returns side-by-side metrics for both periods: volume, decision counts/rates, human-review rate, and average specialist scores.
+- Returns side-by-side metrics for both periods: volume, decision counts/rates, finance-review rate, and average specialist scores.
 
 Upload flow:
 
-- Use `POST /cases/create-with-upload` with applicant fields as form fields and one or more files in `files`.
+- Use `POST /cases/create-with-upload` with spend profile fields as form fields and one or more files in `files`.
 - The backend extracts machine-readable signals from uploaded documents (json/csv/text and best-effort regex extraction), stores files under `backend/uploads/<case_id>/`, and injects derived signals into specialist agents.
-- Agents then include document-derived evidence in affordability, risk, and data-credibility analysis.
+- Agents then include document-derived evidence in spend efficiency, variance risk, and data quality analysis.
 
 Testing:
 
@@ -57,5 +57,5 @@ Postman:
 - Set `base_url` variable (default: `http://127.0.0.1:8000`)
 - For upload requests, attach one or more local files to the `files` form field.
 
-This is a hackathon-safe demo of a multi-agent consumer credit workflow:
-Data Credibility Agent, Affordability Agent, Credit Risk Agent, Manager Agent, and deterministic policy engine.
+This is a hackathon-safe demo of a multi-agent monthly spend intelligence workflow:
+Data Quality Agent, Spend Efficiency Agent, Budget Variance Agent, Manager Agent, and deterministic spend policy engine.

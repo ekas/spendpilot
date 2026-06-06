@@ -16,13 +16,15 @@ UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
 
 
 NUMBER_PATTERNS = {
-    "monthly_income": [r"monthly[_\s-]*income\D*([0-9]+(?:\.[0-9]+)?)", r"income\D*([0-9]+(?:\.[0-9]+)?)"],
-    "monthly_expenses": [r"monthly[_\s-]*expenses\D*([0-9]+(?:\.[0-9]+)?)", r"expenses\D*([0-9]+(?:\.[0-9]+)?)"],
-    "existing_debt": [r"existing[_\s-]*debt\D*([0-9]+(?:\.[0-9]+)?)", r"debt\D*([0-9]+(?:\.[0-9]+)?)"],
-    "credit_utilization": [r"credit[_\s-]*utilization\D*([0-9]+(?:\.[0-9]+)?)", r"utilization\D*([0-9]+(?:\.[0-9]+)?)"],
-    "delinquencies_12m": [r"delinquencies[_\s-]*12m\D*([0-9]+)", r"delinquencies\D*([0-9]+)"],
-    "employment_months": [r"employment[_\s-]*months\D*([0-9]+)", r"employment\D*([0-9]+)\s*months"],
-    "overdrafts_90d": [r"overdrafts[_\s-]*90d\D*([0-9]+)", r"overdrafts\D*([0-9]+)"],
+    "monthly_revenue": [r"monthly[_\s-]*revenue\D*([0-9]+(?:\.[0-9]+)?)", r"revenue\D*([0-9]+(?:\.[0-9]+)?)"],
+    "monthly_spend": [r"monthly[_\s-]*spend\D*([0-9]+(?:\.[0-9]+)?)", r"spend\D*([0-9]+(?:\.[0-9]+)?)"],
+    "planned_budget": [r"planned[_\s-]*budget\D*([0-9]+(?:\.[0-9]+)?)", r"budget\D*([0-9]+(?:\.[0-9]+)?)"],
+    "cash_reserve": [r"cash[_\s-]*reserve\D*([0-9]+(?:\.[0-9]+)?)", r"reserve\D*([0-9]+(?:\.[0-9]+)?)"],
+    "budget_variance_ratio": [r"budget[_\s-]*variance[_\s-]*ratio\D*([0-9]+(?:\.[0-9]+)?)", r"variance\D*([0-9]+(?:\.[0-9]+)?)"],
+    "anomalous_transactions_30d": [r"anomalous[_\s-]*transactions[_\s-]*30d\D*([0-9]+)", r"anomal(?:y|ies)\D*([0-9]+)"],
+    "runway_months": [r"runway[_\s-]*months\D*([0-9]+)", r"runway\D*([0-9]+)\s*months"],
+    "late_payments_90d": [r"late[_\s-]*payments[_\s-]*90d\D*([0-9]+)", r"late[_\s-]*payments\D*([0-9]+)"],
+    "invoice_match_rate": [r"invoice[_\s-]*match[_\s-]*rate\D*([0-9]+(?:\.[0-9]+)?)", r"match[_\s-]*rate\D*([0-9]+(?:\.[0-9]+)?)"],
 }
 
 
@@ -85,12 +87,16 @@ def _extract_with_regex(text: str) -> dict[str, float]:
 
 def _normalize_hints(hints: dict[str, float]) -> dict[str, Any]:
     normalized: dict[str, Any] = dict(hints)
-    if "credit_utilization" in normalized:
-        util = float(normalized["credit_utilization"])
+    if "budget_variance_ratio" in normalized:
+        util = float(normalized["budget_variance_ratio"])
         # Accept either ratio form (0.62) or percentage form (62).
-        normalized["credit_utilization"] = util / 100 if util > 1 else util
+        normalized["budget_variance_ratio"] = util / 100 if util > 1 else util
 
-    for int_key in ("delinquencies_12m", "employment_months", "overdrafts_90d"):
+    if "invoice_match_rate" in normalized:
+        rate = float(normalized["invoice_match_rate"])
+        normalized["invoice_match_rate"] = rate / 100 if rate > 1 else rate
+
+    for int_key in ("anomalous_transactions_30d", "runway_months", "late_payments_90d"):
         if int_key in normalized:
             normalized[int_key] = int(round(float(normalized[int_key])))
     return normalized
@@ -98,7 +104,7 @@ def _normalize_hints(hints: dict[str, float]) -> dict[str, Any]:
 
 def _signals_from_text(text: str) -> dict[str, Any]:
     lowered = text.lower()
-    income_verified = "income verified" in lowered or "verified income" in lowered
+    books_verified = "books verified" in lowered or "verified books" in lowered
     consistency_flags: list[str] = []
 
     if "fraud" in lowered or "forg" in lowered:
@@ -108,7 +114,7 @@ def _signals_from_text(text: str) -> dict[str, Any]:
 
     hints = _extract_with_regex(text)
     return {
-        "income_verified_from_docs": income_verified,
+        "books_verified_from_docs": books_verified,
         "consistency_flags": consistency_flags,
         "numeric_hints": hints,
     }
@@ -156,10 +162,10 @@ async def analyze_uploaded_documents(files: list[UploadFile]) -> dict[str, Any]:
 
     merged_hints = _normalize_hints(merged_hints)
     joined_text = "\n".join(all_text_parts)
-    coverage_score = min(1.0, len(merged_hints) / 7)
+    coverage_score = min(1.0, len(merged_hints) / 9)
 
     lowered_all = joined_text.lower()
-    income_verified_from_docs = "income verified" in lowered_all or "verified income" in lowered_all
+    books_verified_from_docs = "books verified" in lowered_all or "verified books" in lowered_all
 
     return {
         "evidence_refs": evidence_refs,
@@ -168,7 +174,7 @@ async def analyze_uploaded_documents(files: list[UploadFile]) -> dict[str, Any]:
             "numeric_hints": merged_hints,
             "consistency_flags": consistency_flags,
             "coverage_score": round(coverage_score, 2),
-            "income_verified_from_docs": income_verified_from_docs,
+            "books_verified_from_docs": books_verified_from_docs,
             "unreadable_files": unreadable_files,
         },
     }

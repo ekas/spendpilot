@@ -2,7 +2,7 @@ from uuid import uuid4
 from datetime import date, datetime, time, timedelta
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
-from app.models.schemas import Applicant, CaseCreate, CaseResult
+from app.models.schemas import SpendProfile, CaseCreate, CaseResult
 from app.agents import data_credibility_agent, affordability_agent, credit_risk_agent, manager_agent
 from app.policy.rules import decide
 from app.data.sample_cases import SAMPLE_CASES
@@ -28,15 +28,15 @@ def _safe_rate(part: int, total: int) -> float:
 
 
 def _summarize_period(cases: list[CaseResult], start_date: date, end_date: date) -> dict:
-    totals = {"APPROVE": 0, "REFER": 0, "REJECT": 0}
-    human_review_count = 0
+    totals = {"HEALTHY": 0, "WATCHLIST": 0, "ACTION_REQUIRED": 0}
+    finance_review_count = 0
     score_acc = {}
     score_counts = {}
 
     for case in cases:
         totals[case.status] = totals.get(case.status, 0) + 1
-        if case.policy_decision.requires_human_review:
-            human_review_count += 1
+        if case.policy_decision.requires_finance_review:
+            finance_review_count += 1
 
         for report in case.specialist_reports:
             score_acc[report.agent_name] = score_acc.get(report.agent_name, 0.0) + report.score
@@ -54,26 +54,26 @@ def _summarize_period(cases: list[CaseResult], start_date: date, end_date: date)
         "total_cases": total_cases,
         "decision_counts": totals,
         "decision_rates": {
-            "APPROVE": _safe_rate(totals.get("APPROVE", 0), total_cases),
-            "REFER": _safe_rate(totals.get("REFER", 0), total_cases),
-            "REJECT": _safe_rate(totals.get("REJECT", 0), total_cases),
+            "HEALTHY": _safe_rate(totals.get("HEALTHY", 0), total_cases),
+            "WATCHLIST": _safe_rate(totals.get("WATCHLIST", 0), total_cases),
+            "ACTION_REQUIRED": _safe_rate(totals.get("ACTION_REQUIRED", 0), total_cases),
         },
-        "human_review_rate": _safe_rate(human_review_count, total_cases),
+        "finance_review_rate": _safe_rate(finance_review_count, total_cases),
         "avg_specialist_scores": avg_scores,
     }
 
-def run_case(applicant: Applicant, case_id: str | None = None) -> CaseResult:
+def run_case(profile: SpendProfile, case_id: str | None = None) -> CaseResult:
     case_id = case_id or str(uuid4())[:8]
     reports = [
-        data_credibility_agent.run(applicant),
-        affordability_agent.run(applicant),
-        credit_risk_agent.run(applicant),
+        data_credibility_agent.run(profile),
+        affordability_agent.run(profile),
+        credit_risk_agent.run(profile),
     ]
     manager = manager_agent.run(reports)
     policy = decide(reports, manager)
     result = CaseResult(
         case_id=case_id,
-        applicant=applicant,
+        profile=profile,
         status=policy.final_decision,
         specialist_reports=reports,
         manager_report=manager,
@@ -83,30 +83,32 @@ def run_case(applicant: Applicant, case_id: str | None = None) -> CaseResult:
     return result
 
 
-def _build_applicant_from_form(
+def _build_profile_from_form(
     *,
-    name: str,
-    monthly_income: float,
-    monthly_expenses: float,
-    requested_amount: float,
-    existing_debt: float,
-    credit_utilization: float,
-    delinquencies_12m: int,
-    employment_months: int,
-    overdrafts_90d: int,
-    income_verified: bool,
-) -> Applicant:
-    return Applicant(
-        name=name,
-        monthly_income=monthly_income,
-        monthly_expenses=monthly_expenses,
-        requested_amount=requested_amount,
-        existing_debt=existing_debt,
-        credit_utilization=credit_utilization,
-        delinquencies_12m=delinquencies_12m,
-        employment_months=employment_months,
-        overdrafts_90d=overdrafts_90d,
-        income_verified=income_verified,
+    company_name: str,
+    monthly_revenue: float,
+    monthly_spend: float,
+    planned_budget: float,
+    cash_reserve: float,
+    budget_variance_ratio: float,
+    anomalous_transactions_30d: int,
+    runway_months: int,
+    late_payments_90d: int,
+    invoice_match_rate: float,
+    books_verified: bool,
+) -> SpendProfile:
+    return SpendProfile(
+        company_name=company_name,
+        monthly_revenue=monthly_revenue,
+        monthly_spend=monthly_spend,
+        planned_budget=planned_budget,
+        cash_reserve=cash_reserve,
+        budget_variance_ratio=budget_variance_ratio,
+        anomalous_transactions_30d=anomalous_transactions_30d,
+        runway_months=runway_months,
+        late_payments_90d=late_payments_90d,
+        invoice_match_rate=invoice_match_rate,
+        books_verified=books_verified,
         documents=[],
     )
 
@@ -114,57 +116,59 @@ def _build_applicant_from_form(
 def load_samples():
     results=[]
     for item in SAMPLE_CASES:
-        results.append(run_case(Applicant(**item)))
+        results.append(run_case(SpendProfile(**item)))
     return results
 
 @router.post("/create", response_model=CaseResult)
 def create_case(payload: CaseCreate):
-    return run_case(payload.applicant)
+    return run_case(payload.profile)
 
 
 @router.post("/create-with-upload", response_model=CaseResult)
 async def create_case_with_upload(
-    name: str = Form(...),
-    monthly_income: float = Form(...),
-    monthly_expenses: float = Form(...),
-    requested_amount: float = Form(...),
-    existing_debt: float = Form(...),
-    credit_utilization: float = Form(...),
-    delinquencies_12m: int = Form(0),
-    employment_months: int = Form(0),
-    overdrafts_90d: int = Form(0),
-    income_verified: bool = Form(False),
+    company_name: str = Form(...),
+    monthly_revenue: float = Form(...),
+    monthly_spend: float = Form(...),
+    planned_budget: float = Form(...),
+    cash_reserve: float = Form(...),
+    budget_variance_ratio: float = Form(...),
+    anomalous_transactions_30d: int = Form(0),
+    runway_months: int = Form(0),
+    late_payments_90d: int = Form(0),
+    invoice_match_rate: float = Form(1.0),
+    books_verified: bool = Form(False),
     files: list[UploadFile] = File(...),
 ):
     if not files:
         raise HTTPException(status_code=400, detail="At least one file is required.")
 
     case_id = str(uuid4())[:8]
-    applicant = _build_applicant_from_form(
-        name=name,
-        monthly_income=monthly_income,
-        monthly_expenses=monthly_expenses,
-        requested_amount=requested_amount,
-        existing_debt=existing_debt,
-        credit_utilization=credit_utilization,
-        delinquencies_12m=delinquencies_12m,
-        employment_months=employment_months,
-        overdrafts_90d=overdrafts_90d,
-        income_verified=income_verified,
+    profile = _build_profile_from_form(
+        company_name=company_name,
+        monthly_revenue=monthly_revenue,
+        monthly_spend=monthly_spend,
+        planned_budget=planned_budget,
+        cash_reserve=cash_reserve,
+        budget_variance_ratio=budget_variance_ratio,
+        anomalous_transactions_30d=anomalous_transactions_30d,
+        runway_months=runway_months,
+        late_payments_90d=late_payments_90d,
+        invoice_match_rate=invoice_match_rate,
+        books_verified=books_verified,
     )
 
     analysis = await analyze_uploaded_documents(files)
     stored_paths = await persist_uploaded_documents(files, case_id)
 
-    applicant.documents = analysis["evidence_refs"]
-    applicant.document_text = analysis["document_text"]
-    applicant.document_signals = analysis["document_signals"]
-    applicant.document_signals["stored_paths"] = stored_paths
+    profile.documents = analysis["evidence_refs"]
+    profile.document_text = analysis["document_text"]
+    profile.document_signals = analysis["document_signals"]
+    profile.document_signals["stored_paths"] = stored_paths
 
-    if analysis["document_signals"].get("income_verified_from_docs"):
-        applicant.income_verified = True
+    if analysis["document_signals"].get("books_verified_from_docs"):
+        profile.books_verified = True
 
-    return run_case(applicant, case_id=case_id)
+    return run_case(profile, case_id=case_id)
 
 @router.get("", response_model=list[CaseResult])
 def list_cases():
@@ -176,16 +180,16 @@ def list_cases():
 def review_queue():
     if case_count() == 0:
         load_samples()
-    return repo_list_review_queue()
+    return [c for c in repo_list_review_queue() if c.policy_decision.requires_finance_review]
 
 @router.post("/{case_id}/human-decision")
 def human_decision(case_id: str, decision: str):
-    if decision.upper() not in {"APPROVE", "REJECT", "REFER"}:
-        raise HTTPException(status_code=422, detail="decision must be one of APPROVE, REJECT, REFER")
+    if decision.upper() not in {"HEALTHY", "WATCHLIST", "ACTION_REQUIRED"}:
+        raise HTTPException(status_code=422, detail="decision must be one of HEALTHY, WATCHLIST, ACTION_REQUIRED")
     updated = set_human_decision(case_id, decision.upper())
     if not updated:
         raise HTTPException(status_code=404, detail="case not found")
-    return {"case_id": case_id, "human_decision": decision.upper(), "message":"Human reviewer decision recorded for demo."}
+    return {"case_id": case_id, "finance_decision": decision.upper(), "message":"Finance reviewer decision recorded for demo."}
 
 
 @router.get("/compare-periods")
@@ -209,9 +213,9 @@ def compare_periods(
         "period_b": summary_b,
         "delta": {
             "total_cases": summary_b["total_cases"] - summary_a["total_cases"],
-            "approve_rate": round(summary_b["decision_rates"]["APPROVE"] - summary_a["decision_rates"]["APPROVE"], 4),
-            "refer_rate": round(summary_b["decision_rates"]["REFER"] - summary_a["decision_rates"]["REFER"], 4),
-            "reject_rate": round(summary_b["decision_rates"]["REJECT"] - summary_a["decision_rates"]["REJECT"], 4),
-            "human_review_rate": round(summary_b["human_review_rate"] - summary_a["human_review_rate"], 4),
+            "healthy_rate": round(summary_b["decision_rates"]["HEALTHY"] - summary_a["decision_rates"]["HEALTHY"], 4),
+            "watchlist_rate": round(summary_b["decision_rates"]["WATCHLIST"] - summary_a["decision_rates"]["WATCHLIST"], 4),
+            "action_required_rate": round(summary_b["decision_rates"]["ACTION_REQUIRED"] - summary_a["decision_rates"]["ACTION_REQUIRED"], 4),
+            "finance_review_rate": round(summary_b["finance_review_rate"] - summary_a["finance_review_rate"], 4),
         },
     }
