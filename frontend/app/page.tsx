@@ -83,6 +83,15 @@ export default function ApplicationPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
+      {/* Logo */}
+      <div className="flex justify-center mb-8 animate-fade-in">
+        <img
+          src="/screen.png"
+          alt="SpendPilot Logo"
+          className="h-16 sm:h-20 w-auto"
+        />
+      </div>
+
       {/* Hero */}
       <div className="text-center mb-12 animate-fade-in">
         <div className="inline-flex items-center gap-2 rounded-full border border-accent-border bg-accent-muted px-3 py-1 text-xs text-accent mb-6">

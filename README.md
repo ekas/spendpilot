@@ -1,5 +1,7 @@
 # SpendPilot
 
+![SpendPilot Logo](./frontend/public/screen.png)
+
 **Explainable multi-agent credit and spend intelligence system** with transparent decision-making, specialist agent collaboration, and policy-driven outcomes.
 
 SpendPilot combines a Next.js 15 frontend UI, Python FastAPI modeling service, and a governed multi-agent workflow to provide auditable, interpretable credit decisions.
@@ -109,10 +111,11 @@ Decision + Explanations + Evidence References
 - Three specialist agents run independently, analyzing complementary risk dimensions
 - Manager Agent consolidates findings and resolves disagreements
 
-✅ **Explainable Decisions**
+✅ **Explainable Decisions with ML & Fallback**
+- **XGBoost models**: Gradient-boosted trees with SHAP feature importance
 - Each decision includes feature contributions, reason codes, and evidence references
-- Feature SHAP scores show exactly what drove each recommendation
-- Transparent fallback to development scorecards when trained models unavailable
+- Model transparency: Every decision reports whether it used trained XGBoost, transparent scorecard, or rules
+- Graceful fallback: When artifacts unavailable, system uses deterministic scorecards and rule-based checks
 
 ✅ **Policy-Driven Routing**
 - Deterministic policy rules determine automatic approval, referral, or decline
@@ -124,11 +127,78 @@ Decision + Explanations + Evidence References
   - Risk indicators (delinquencies, overdrafts, employment history)
   - Derived metrics (debt-to-income ratio, affordability score)
 - Color-coded health indicators and trend analysis
+- AI-generated narratives via Phi-1.5 SLM (local or OpenRouter)
+
+✅ **AI-Powered Narratives**
+- **Phi-1.5** small language model generates human-readable decision summaries
+- Works offline with local GGUF or via OpenRouter free tier API
+- Explains specialist disagreements and policy rule triggers
+- Audit-trail ready for regulatory compliance
 
 ✅ **PII-Minimized Processing**
 - Applicant names stripped before scoring
 - Only machine-readable signals preserved
 - All decisions use anonymized applicant references
+
+---
+
+## Models & Machine Learning
+
+### ML Models: XGBoost
+
+SpendPilot uses **gradient-boosted decision trees (XGBoost)** for specialist agent scoring:
+
+- **Affordability Agent**: `affordability-monotonic-xgboost`
+  - Trained on synthetic credit data with spending patterns
+  - Evaluates income stability, expense ratios, and debt burden
+  - Produces risk scores [0, 1] with SHAP feature importance
+
+- **Credit Risk Agent**: `credit-risk-monotonic-xgboost`
+  - Analyzes payment history, credit utilization, and delinquencies
+  - Enforces monotonic constraints for regulatory interpretability
+  - Returns adverse-risk probability and top risk drivers
+
+**Models stored in:** `modeling/artifacts/models/`
+
+**Training pipeline:** `modeling/src/spendpilot/training/`
+
+### Small Language Model: Phi-1.5
+
+SpendPilot includes **Phi-1.5** (Microsoft's small language model) for narrative generation and feedback routing:
+
+- **Model**: `phi-1.5.Q4_K_M.gguf` (quantized, ~3.3GB)
+- **Format**: GGUF (Llama.cpp compatible)
+- **Use cases**:
+  - Generate human-readable decision explanations
+  - Route human feedback to appropriate agents
+  - Create audit narratives for compliance
+
+**Running locally:**
+
+```bash
+export SPENDPILOT_GGUF_PATH=/path/to/phi-1.5.Q4_K_M.gguf
+python -m spendpilot.cli local-llm-smoke --gguf-path /path/to/phi-1.5.Q4_K_M.gguf
+```
+
+**Or via OpenRouter API:**
+
+```bash
+export OPENROUTER_API_KEY="your-api-key"
+python -m spendpilot.cli demo --with-openrouter
+```
+
+### Fallback & Transparency
+
+When trained artifacts are unavailable:
+- **Credibility Agent**: Rule-based checks (document verification, coverage scoring)
+- **Affordability Agent**: Transparent development scorecard with linear scoring
+- **Credit Risk Agent**: Deterministic risk thresholds with explicit reason codes
+
+All decisions include:
+- `model_source`: "trained_xgboost" | "transparent_scorecard" | "rules"
+- `model_version`: Training date and artifact version
+- `limitations`: Data source constraints and model assumptions
+- `confidence`: Calibrated probability [0, 1]
 
 ---
 
@@ -223,8 +293,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 **Modeling** (optional):
 
 ```env
-SPENDPILOT_GGUF_PATH=/path/to/phi-1.5.gguf
-OPENROUTER_API_KEY=...
+# Local Phi-1.5 SLM for narrative generation
+SPENDPILOT_GGUF_PATH=/path/to/phi-1.5.Q4_K_M.gguf
+
+# Cloud LLM provider (OpenRouter) - free tier available
+OPENROUTER_API_KEY=your-openrouter-api-key
+
+# Model artifacts location (default: modeling/artifacts/models)
+SPENDPILOT_MODEL_ARTIFACT_ROOT=modeling/artifacts/models
 ```
 
 ### Frontend Development

@@ -44,10 +44,13 @@ export function Sidebar({ open, onClose, className }: SidebarProps) {
         <Link
           href="/"
           onClick={onClose}
-          className="text-xl font-bold tracking-tight"
+          className="inline-block hover:opacity-80 transition"
         >
-          <span className="text-foreground">Spend</span>
-          <span className="text-accent">Pilot</span>
+          <img
+            src="/screen.png"
+            alt="SpendPilot Logo"
+            className="h-8 w-auto"
+          />
         </Link>
         {onClose && (
           <button

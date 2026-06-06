@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Banknote,
   WalletCards,
@@ -107,6 +108,17 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
+      {/* Logo Navigation */}
+      <div className="mb-6">
+        <Link href="/" className="inline-block hover:opacity-80 transition">
+          <img
+            src="/screen.png"
+            alt="SpendPilot Logo"
+            className="h-10 sm:h-12 w-auto"
+          />
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
