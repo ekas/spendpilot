@@ -30,16 +30,16 @@ export function RecurringBills({ bills }: RecurringBillsProps) {
         {bills.map((bill) => (
           <div
             key={bill.vendor}
-            className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/30 px-3 py-2.5"
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2.5"
           >
-            <RefreshCw className="h-3.5 w-3.5 text-zinc-600 shrink-0" />
+            <RefreshCw className="h-3.5 w-3.5 text-muted-foreground/80 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-zinc-200 truncate">{bill.vendor}</p>
-              <p className="text-[10px] text-zinc-600">
+              <p className="text-sm text-foreground truncate">{bill.vendor}</p>
+              <p className="text-[10px] text-muted-foreground/80">
                 {bill.frequency} · next {new Date(bill.nextDue).toLocaleDateString()}
               </p>
             </div>
-            <span className="text-sm font-mono text-zinc-300 shrink-0">
+            <span className="text-sm font-mono text-foreground/90 shrink-0">
               {formatCurrency(bill.amount)}
             </span>
             {bill.duplicateRisk ? (

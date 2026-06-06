@@ -1,65 +1,109 @@
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { Card } from "@/components/ui/Card";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MetricCardProps {
   label: string;
   value: string;
-  subtext?: string;
-  trend?: "up" | "down" | "stable";
-  trendLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
-  accent?: "cyan" | "emerald" | "amber" | "rose" | "violet";
+  accent?: "violet" | "emerald" | "blue" | "amber" | "rose";
+  trendPercent?: string;
+  trendLabel?: string;
+  trend?: "up" | "down";
+  progress?: number;
+  progressSubtext?: string;
 }
 
-const accentMap = {
-  cyan: "text-cyan-400",
-  emerald: "text-emerald-400",
-  amber: "text-amber-400",
-  rose: "text-rose-400",
-  violet: "text-violet-400",
+const iconStyles = {
+  violet: {
+    bg: "bg-violet-100 dark:bg-violet-500/15",
+    icon: "text-violet-600 dark:text-violet-400",
+    bar: "bg-violet-500",
+  },
+  emerald: {
+    bg: "bg-emerald-100 dark:bg-emerald-500/15",
+    icon: "text-emerald-600 dark:text-emerald-400",
+    bar: "bg-emerald-500",
+  },
+  blue: {
+    bg: "bg-blue-100 dark:bg-blue-500/15",
+    icon: "text-blue-600 dark:text-blue-400",
+    bar: "bg-blue-500",
+  },
+  amber: {
+    bg: "bg-amber-100 dark:bg-amber-500/15",
+    icon: "text-amber-600 dark:text-amber-400",
+    bar: "bg-amber-500",
+  },
+  rose: {
+    bg: "bg-rose-100 dark:bg-rose-500/15",
+    icon: "text-rose-600 dark:text-rose-400",
+    bar: "bg-rose-500",
+  },
 };
 
 export function MetricCard({
   label,
   value,
-  subtext,
-  trend,
-  trendLabel,
   icon: Icon,
-  accent = "cyan",
+  accent = "violet",
+  trendPercent,
+  trendLabel,
+  trend = "up",
+  progress,
+  progressSubtext,
 }: MetricCardProps) {
-  const TrendIcon =
-    trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
+  const styles = iconStyles[accent];
+  const TrendIcon = trend === "up" ? TrendingUp : TrendingDown;
+  const trendColor =
+    trend === "up"
+      ? "text-emerald-600 dark:text-emerald-500"
+      : "text-red-600 dark:text-red-500";
 
   return (
-    <Card padding="sm">
-      <div className="flex items-start justify-between mb-2">
-        <p className="text-xs text-zinc-500">{label}</p>
-        {Icon && <Icon className={cn("h-4 w-4", accentMap[accent])} />}
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        {Icon && (
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+              styles.bg
+            )}
+          >
+            <Icon className={cn("h-5 w-5", styles.icon)} />
+          </div>
+        )}
       </div>
-      <p className={cn("text-xl font-bold font-mono", accentMap[accent])}>
+
+      <p className="text-2xl sm:text-[1.75rem] font-bold text-foreground tracking-tight leading-none mb-4">
         {value}
       </p>
-      {(subtext || trend) && (
-        <div className="flex items-center gap-1.5 mt-1.5">
-          {trend && (
-            <TrendIcon
-              className={cn(
-                "h-3 w-3",
-                trend === "up"
-                  ? "text-emerald-400"
-                  : trend === "down"
-                    ? "text-red-400"
-                    : "text-zinc-500"
-              )}
+
+      {progress !== undefined && (
+        <div className="mb-3">
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn("h-full rounded-full transition-all", styles.bar)}
+              style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
             />
+          </div>
+          {progressSubtext && (
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {progressSubtext}
+            </p>
           )}
-          <p className="text-[11px] text-zinc-500">
-            {trendLabel ?? subtext}
-          </p>
         </div>
       )}
-    </Card>
+
+      {trendPercent && (
+        <div className="flex items-center gap-1 flex-wrap text-xs">
+          <TrendIcon className={cn("h-3.5 w-3.5", trendColor)} />
+          <span className={cn("font-semibold", trendColor)}>{trendPercent}</span>
+          {trendLabel && (
+            <span className="text-muted-foreground">{trendLabel}</span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

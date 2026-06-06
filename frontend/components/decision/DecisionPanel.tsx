@@ -39,7 +39,7 @@ const outcomeConfig = {
     icon: Clock,
     label: "Pending",
     variant: "muted" as const,
-    bg: "bg-zinc-800/50 border-zinc-700",
+    bg: "bg-muted/50 border-border",
   },
 };
 
@@ -57,8 +57,8 @@ export function DecisionPanel({ decision }: DecisionPanelProps) {
         title="Final Decision"
         subtitle="Manager Agent recommendation"
         action={
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10">
-            <Shield className="h-4 w-4 text-cyan-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-muted">
+            <Shield className="h-4 w-4 text-accent" />
           </div>
         }
       />
@@ -76,7 +76,7 @@ export function DecisionPanel({ decision }: DecisionPanelProps) {
               {config.label}
             </p>
             {decision.decidedAt && (
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted-foreground">
                 {decision.reviewedBy} · {formatDate(decision.decidedAt)}
               </p>
             )}
@@ -87,13 +87,13 @@ export function DecisionPanel({ decision }: DecisionPanelProps) {
         </div>
 
         <div className="space-y-2">
-          <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Rationale
           </h4>
           <ul className="space-y-1.5">
             {decision.rationale.map((r, i) => (
-              <li key={i} className="flex gap-2 text-sm text-zinc-300">
-                <span className="text-zinc-600 font-mono text-xs mt-0.5">
+              <li key={i} className="flex gap-2 text-sm text-foreground/90">
+                <span className="text-muted-foreground/80 font-mono text-xs mt-0.5">
                   {i + 1}.
                 </span>
                 {r}
@@ -103,13 +103,13 @@ export function DecisionPanel({ decision }: DecisionPanelProps) {
         </div>
 
         {decision.conditions && decision.conditions.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-zinc-800/50">
+          <div className="mt-4 pt-4 border-t border-border/50">
             <h4 className="text-xs font-medium text-amber-400 uppercase tracking-wider mb-2">
               Conditions
             </h4>
             <ul className="space-y-1">
               {decision.conditions.map((c, i) => (
-                <li key={i} className="text-sm text-zinc-400 flex gap-2">
+                <li key={i} className="text-sm text-muted-foreground flex gap-2">
                   <AlertCircle className="h-3.5 w-3.5 text-amber-400 mt-0.5 shrink-0" />
                   {c}
                 </li>

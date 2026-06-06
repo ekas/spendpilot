@@ -35,10 +35,10 @@ export function CredibilityScore({ credibility }: CredibilityScoreProps) {
             label="Credit Risk Agent"
             size="sm"
           />
-          <div className="pt-2 border-t border-zinc-800">
-            <p className="text-xs text-zinc-500">
+          <div className="pt-2 border-t border-border">
+            <p className="text-xs text-muted-foreground">
               Aggregate confidence:{" "}
-              <span className="font-mono text-zinc-300">
+              <span className="font-mono text-foreground/90">
                 {(credibility.confidence * 100).toFixed(0)}%
               </span>
             </p>

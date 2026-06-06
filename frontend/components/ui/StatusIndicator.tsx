@@ -5,8 +5,8 @@ const statusConfig: Record<
   AgentStatus,
   { color: string; label: string; pulse?: boolean }
 > = {
-  idle: { color: "bg-zinc-500", label: "Idle" },
-  processing: { color: "bg-cyan-500", label: "Processing", pulse: true },
+  idle: { color: "bg-muted-foreground/50", label: "Idle" },
+  processing: { color: "bg-accent", label: "Processing", pulse: true },
   complete: { color: "bg-emerald-500", label: "Complete" },
   error: { color: "bg-red-500", label: "Error" },
   waiting: { color: "bg-amber-500", label: "Waiting", pulse: true },
@@ -43,7 +43,7 @@ export function StatusIndicator({
         )}
       </span>
       {showLabel && (
-        <span className="text-xs text-zinc-400">{config.label}</span>
+        <span className="text-xs text-muted-foreground">{config.label}</span>
       )}
     </span>
   );

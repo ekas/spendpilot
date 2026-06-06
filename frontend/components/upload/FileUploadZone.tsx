@@ -49,8 +49,8 @@ export function FileUploadZone({
         className={cn(
           "relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 transition-colors",
           dragging
-            ? "border-cyan-500 bg-cyan-500/5"
-            : "border-zinc-700 hover:border-zinc-600 bg-zinc-900/30",
+            ? "border-accent bg-accent-muted"
+            : "border-border hover:border-accent-border bg-surface",
           disabled && "opacity-50 pointer-events-none"
         )}
       >
@@ -62,13 +62,13 @@ export function FileUploadZone({
           className="absolute inset-0 cursor-pointer opacity-0"
           disabled={disabled}
         />
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800 mb-4">
-          <Upload className="h-5 w-5 text-zinc-400" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
+          <Upload className="h-5 w-5 text-muted-foreground" />
         </div>
-        <p className="text-sm font-medium text-zinc-300">
+        <p className="text-sm font-medium text-foreground/90">
           Drop files here or click to browse
         </p>
-        <p className="text-xs text-zinc-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           Invoices, quotes, contracts, bank statements, spend exports (PDF, TXT, CSV)
         </p>
       </div>
@@ -78,24 +78,24 @@ export function FileUploadZone({
           {documents.map((doc) => (
             <li
               key={doc.id}
-              className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3"
+              className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3"
             >
-              <FileText className="h-4 w-4 text-zinc-500 shrink-0" />
+              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-zinc-200 truncate">{doc.name}</p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-sm text-foreground truncate">{doc.name}</p>
+                <p className="text-xs text-muted-foreground">
                   {formatFileSize(doc.size)} · {doc.type.replace("-", " ")}
                 </p>
               </div>
               {doc.status === "uploading" || doc.status === "extracting" ? (
-                <Loader2 className="h-4 w-4 text-cyan-400 animate-spin shrink-0" />
+                <Loader2 className="h-4 w-4 text-accent animate-spin shrink-0" />
               ) : doc.status === "ready" ? (
                 <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
               ) : null}
               {onRemove && (
                 <button
                   onClick={() => onRemove(doc.id)}
-                  className="text-zinc-600 hover:text-zinc-400 transition-colors"
+                  className="text-muted-foreground/80 hover:text-muted-foreground transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>

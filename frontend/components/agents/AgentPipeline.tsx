@@ -46,8 +46,8 @@ export function AgentPipeline({ currentStage }: AgentPipelineProps) {
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
                     isComplete && "bg-emerald-500/20 border-emerald-500/40 text-emerald-400",
-                    isCurrent && "bg-cyan-500/20 border-cyan-500/40 text-cyan-400 ring-2 ring-cyan-500/20",
-                    isPending && "bg-zinc-900 border-zinc-800 text-zinc-600"
+                    isCurrent && "bg-accent-muted border-accent-border text-accent ring-2 ring-accent/20",
+                    isPending && "bg-surface border-border text-muted-foreground/80"
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -56,8 +56,8 @@ export function AgentPipeline({ currentStage }: AgentPipelineProps) {
                   className={cn(
                     "text-[10px] font-medium whitespace-nowrap",
                     isComplete && "text-emerald-400",
-                    isCurrent && "text-cyan-400",
-                    isPending && "text-zinc-600"
+                    isCurrent && "text-accent",
+                    isPending && "text-muted-foreground/80"
                   )}
                 >
                   {stage.label}
@@ -67,7 +67,7 @@ export function AgentPipeline({ currentStage }: AgentPipelineProps) {
                 <div
                   className={cn(
                     "h-px w-6 sm:w-10",
-                    i < currentIndex ? "bg-emerald-500/40" : "bg-zinc-800"
+                    i < currentIndex ? "bg-emerald-500/40" : "bg-muted"
                   )}
                 />
               )}

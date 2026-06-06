@@ -7,7 +7,7 @@ const statusConfig = {
   pass: { icon: CheckCircle2, color: "text-emerald-400", variant: "success" as const },
   fail: { icon: XCircle, color: "text-red-400", variant: "danger" as const },
   warning: { icon: AlertTriangle, color: "text-amber-400", variant: "warning" as const },
-  pending: { icon: Clock, color: "text-zinc-500", variant: "muted" as const },
+  pending: { icon: Clock, color: "text-muted-foreground", variant: "muted" as const },
 };
 
 interface PolicyValidationProps {
@@ -38,12 +38,12 @@ export function PolicyValidation({ checks }: PolicyValidationProps) {
           return (
             <div
               key={check.id}
-              className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/30 px-3 py-2.5"
+              className="flex items-start gap-3 rounded-lg border border-border bg-surface px-3 py-2.5"
             >
               <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${config.color}`} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-zinc-200">{check.rule}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">{check.details}</p>
+                <p className="text-sm text-foreground">{check.rule}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{check.details}</p>
               </div>
               <Badge variant={config.variant}>{check.status}</Badge>
             </div>

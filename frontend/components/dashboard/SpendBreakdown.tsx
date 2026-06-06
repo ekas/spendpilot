@@ -22,7 +22,7 @@ export function SpendBreakdown({ categories }: SpendBreakdownProps) {
           <div key={cat.name}>
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-zinc-300">{cat.name}</span>
+                <span className="text-sm text-foreground/90">{cat.name}</span>
                 {cat.riskFlag && (
                   <Badge variant="warning">Risk Flag</Badge>
                 )}
@@ -34,15 +34,15 @@ export function SpendBreakdown({ categories }: SpendBreakdownProps) {
                 )}
               </div>
               <div className="text-right">
-                <span className="text-sm font-mono text-zinc-200">
+                <span className="text-sm font-mono text-foreground">
                   {formatCurrency(cat.amount)}
                 </span>
-                <span className="text-xs text-zinc-600 ml-2">
+                <span className="text-xs text-muted-foreground/80 ml-2">
                   {cat.percentage.toFixed(1)}%
                 </span>
               </div>
             </div>
-            <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${
                   cat.riskFlag ? "bg-amber-500" : "bg-cyan-600"

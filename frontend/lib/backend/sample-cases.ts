@@ -1,0 +1,51 @@
+import type { Applicant } from "./schemas";
+
+export const SAMPLE_CASES: Applicant[] = [
+  {
+    name: "Amina Lowrisk",
+    monthly_income: 4200,
+    monthly_expenses: 2100,
+    requested_amount: 6000,
+    existing_debt: 800,
+    credit_utilization: 0.22,
+    delinquencies_12m: 0,
+    employment_months: 28,
+    overdrafts_90d: 0,
+    income_verified: true,
+    documents: [
+      "id_document.pdf",
+      "bank_statement_jan.pdf",
+      "income_proof.pdf",
+    ],
+  },
+  {
+    name: "Ben Borderline",
+    monthly_income: 3100,
+    monthly_expenses: 2450,
+    requested_amount: 12000,
+    existing_debt: 7200,
+    credit_utilization: 0.68,
+    delinquencies_12m: 0,
+    employment_months: 9,
+    overdrafts_90d: 2,
+    income_verified: true,
+    documents: [
+      "id_document.pdf",
+      "bank_statement_jan.pdf",
+      "income_proof.pdf",
+    ],
+  },
+  {
+    name: "Clara Adverse",
+    monthly_income: 2400,
+    monthly_expenses: 2300,
+    requested_amount: 18000,
+    existing_debt: 13000,
+    credit_utilization: 0.91,
+    delinquencies_12m: 2,
+    employment_months: 4,
+    overdrafts_90d: 4,
+    income_verified: false,
+    documents: ["id_document.pdf"],
+  },
+];

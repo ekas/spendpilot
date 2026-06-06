@@ -33,7 +33,7 @@ export function ConflictDetection({ conflicts }: ConflictDetectionProps) {
           {conflicts.map((conflict) => (
             <div
               key={conflict.id}
-              className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-4"
+              className="rounded-lg border border-border bg-surface p-4"
             >
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <RiskBadge level={conflict.severity} />
@@ -54,10 +54,10 @@ export function ConflictDetection({ conflicts }: ConflictDetectionProps) {
                   </Badge>
                 )}
               </div>
-              <p className="text-sm font-medium text-zinc-200 mb-1">
+              <p className="text-sm font-medium text-foreground mb-1">
                 {conflict.topic}
               </p>
-              <p className="text-xs text-zinc-500 mb-2">{conflict.description}</p>
+              <p className="text-xs text-muted-foreground mb-2">{conflict.description}</p>
               {conflict.resolution && (
                 <div className="rounded-md bg-emerald-500/5 border border-emerald-500/20 px-3 py-2">
                   <p className="text-xs text-emerald-400">{conflict.resolution}</p>

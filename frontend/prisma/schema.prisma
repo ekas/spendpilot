@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Case {
+  caseId              String     @id @map("case_id")
+  status              String
+  requiresHumanReview Boolean    @default(false) @map("requires_human_review")
+  payloadJson         Json       @map("payload_json")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+  documents           Document[]
+
+  @@index([requiresHumanReview, createdAt(sort: Desc)], map: "idx_cases_review_queue")
+  @@index([createdAt(sort: Desc)], map: "idx_cases_created_at")
+  @@map("cases")
+}
+
+model Document {
+  id              String   @id @default(uuid()) @db.Uuid
+  caseId          String   @map("case_id")
+  fileName        String   @map("file_name")
+  fileType        String   @default("other") @map("file_type")
+  fileSize        BigInt   @default(0) @map("file_size")
+  storagePath     String?  @map("storage_path")
+  extractedText   String?  @map("extracted_text")
+  documentSignals Json?    @default("{}") @map("document_signals")
+  createdAt       DateTime @default(now()) @map("created_at")
+  case            Case     @relation(fields: [caseId], references: [caseId], onDelete: Cascade)
+
+  @@index([caseId], map: "idx_documents_case_id")
+  @@map("documents")
+}

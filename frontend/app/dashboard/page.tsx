@@ -3,30 +3,30 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  User,
+  PieChart,
   DollarSign,
-  TrendingUp,
+  LineChart,
   CreditCard,
-  PiggyBank,
   Upload,
+  FileText,
 } from "lucide-react";
 import { loadStoredAnalysis } from "@/hooks/useAnalysis";
-import { getAnalysis } from "@/lib/api";
-import { MOCK_ANALYSIS } from "@/lib/mock-data";
-import { formatCurrency, formatPercent } from "@/lib/utils";
+import { getAnalysis, getMockAnalysis } from "@/lib/api";
+import { computeExecutiveMetrics } from "@/lib/dashboard-metrics";
+import { formatCompactCurrency, formatPercent } from "@/lib/utils";
 import type { AnalysisResult } from "@/lib/types";
 
-import { CaseSnapshot } from "@/components/upload/CaseSnapshot";
-import { AgentPipeline } from "@/components/agents/AgentPipeline";
-import { AgentCard } from "@/components/agents/AgentCard";
-import { AgentCommunicationFeed } from "@/components/agents/AgentCommunicationFeed";
-import { CredibilityScore } from "@/components/dashboard/CredibilityScore";
 import { MetricCard } from "@/components/dashboard/MetricCard";
-import { SpendBreakdown } from "@/components/dashboard/SpendBreakdown";
-import { RecurringBills } from "@/components/dashboard/RecurringBills";
-import { SavingsOpportunities } from "@/components/dashboard/SavingsOpportunities";
-import { ConflictDetection } from "@/components/decision/ConflictDetection";
-import { PolicyValidation } from "@/components/decision/PolicyValidation";
-import { DecisionPanel } from "@/components/decision/DecisionPanel";
+import { SpendByCategoryChart } from "@/components/dashboard/SpendByCategoryChart";
+import { SpendOverTimeChart } from "@/components/dashboard/SpendOverTimeChart";
+import { SpecialistAgentPanel } from "@/components/dashboard/SpecialistAgentPanel";
+import { ManagerSummaryPanel } from "@/components/dashboard/ManagerSummaryPanel";
+import { DecisionEvolutionChart } from "@/components/dashboard/DecisionEvolutionChart";
+import { CounterfactualChart } from "@/components/dashboard/CounterfactualChart";
+import { RiskDriversChart } from "@/components/dashboard/RiskDriversChart";
+import { ReasonCodeChart } from "@/components/dashboard/ReasonCodeChart";
+import { PolicyEnginePanel } from "@/components/dashboard/PolicyEnginePanel";
 import { Button } from "@/components/ui/Button";
 
 export default function DashboardPage() {
@@ -49,7 +49,7 @@ export default function DashboardPage() {
         const data = await getAnalysis(caseId);
         setAnalysis(data);
       } else {
-        setAnalysis(MOCK_ANALYSIS);
+        setAnalysis(getMockAnalysis());
       }
       setLoading(false);
     }
@@ -60,8 +60,8 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
-          <p className="text-sm text-zinc-500">Loading analysis...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading analysis...</p>
         </div>
       </div>
     );
@@ -70,7 +70,7 @@ export default function DashboardPage() {
   if (!analysis) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-zinc-400">No analysis data available.</p>
+        <p className="text-muted-foreground">No analysis data available.</p>
         <Button onClick={() => router.push("/")}>
           <Upload className="h-4 w-4" />
           Start Application
@@ -79,127 +79,106 @@ export default function DashboardPage() {
     );
   }
 
-  const { snapshot, credibility } = analysis;
+  const { snapshot } = analysis;
   const specialistReports = analysis.agentReports.filter(
     (r) => r.agentId !== "manager"
   );
-  const managerReport = analysis.agentReports.find(
-    (r) => r.agentId === "manager"
-  );
+  const metrics = computeExecutiveMetrics(analysis);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-zinc-100">
-            CFO Dashboard
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+            Executive Overview
           </h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
-            {snapshot.applicantName} · {analysis.caseId}
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Comprehensive analysis of your company&apos;s monthly spend ·{" "}
+            {snapshot.applicantName}
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => router.push("/")}>
-          <Upload className="h-3.5 w-3.5" />
-          New Application
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm">
+            <FileText className="h-3.5 w-3.5" />
+            Export Report
+          </Button>
+        </div>
       </div>
 
-      {/* Pipeline */}
-      <div className="mb-6 overflow-x-auto">
-        <AgentPipeline currentStage={analysis.pipelineStage} />
-      </div>
-
-      {/* Top metrics row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      {/* Top tiles */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         <MetricCard
-          label="Monthly Income"
-          value={formatCurrency(snapshot.monthlyIncome)}
-          icon={DollarSign}
-          accent="emerald"
-          trend="stable"
-          trendLabel="Verified via contract"
+          label="Total Spend"
+          value={formatCompactCurrency(metrics.totalSpend)}
+          icon={User}
+          accent="violet"
+          trend="up"
+          trendPercent={`${formatPercent(metrics.totalSpendTrend)}`}
+          trendLabel={`vs ${metrics.priorMonthLabel}`}
         />
         <MetricCard
-          label="Monthly Expenses"
-          value={formatCurrency(snapshot.monthlyExpenses)}
+          label="Budget Utilization"
+          value={formatPercent(metrics.budgetUtilization, 0)}
+          icon={PieChart}
+          accent="emerald"
+          progress={metrics.budgetUtilization}
+          progressSubtext={`${formatCompactCurrency(metrics.totalSpend)} of ${formatCompactCurrency(metrics.budgetCap)}`}
+        />
+        <MetricCard
+          label="Savings Identified"
+          value={formatCompactCurrency(metrics.savingsIdentified)}
+          icon={DollarSign}
+          accent="blue"
+          trend="up"
+          trendPercent={`${formatPercent(metrics.savingsTrend)}`}
+          trendLabel={`vs ${metrics.priorMonthLabel}`}
+        />
+        <MetricCard
+          label={`Forecast (${metrics.forecastMonthLabel})`}
+          value={formatCompactCurrency(metrics.forecast)}
+          icon={LineChart}
+          accent="amber"
+          trend="up"
+          trendPercent={`${formatPercent(metrics.forecastTrend)}`}
+          trendLabel={`vs ${metrics.priorMonthShort}`}
+        />
+        <MetricCard
+          label="Transactions"
+          value={metrics.transactions.toLocaleString()}
           icon={CreditCard}
           accent="rose"
           trend="up"
-          trendLabel="Subscriptions +23%"
-        />
-        <MetricCard
-          label="Savings Rate"
-          value={formatPercent(snapshot.savingsRate * 100)}
-          icon={PiggyBank}
-          accent="cyan"
-          trend="up"
-          trendLabel="Above 15% benchmark"
-        />
-        <MetricCard
-          label="Debt-to-Income"
-          value={formatPercent(snapshot.debtToIncome * 100)}
-          icon={TrendingUp}
-          accent="violet"
-          trend="stable"
-          trendLabel="Below 35% threshold"
+          trendPercent={`${formatPercent(metrics.transactionsTrend)}`}
+          trendLabel={`vs ${metrics.priorMonthLabel}`}
         />
       </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-1">
-          <CredibilityScore credibility={credibility} />
-        </div>
-        <div className="lg:col-span-2">
-          <CaseSnapshot snapshot={snapshot} />
-        </div>
+      {/* Spend charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <SpendByCategoryChart analysis={analysis} />
+        <SpendOverTimeChart analysis={analysis} />
       </div>
 
-      {/* Agent reports */}
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold text-zinc-300 mb-3 uppercase tracking-wider">
-          Specialist Agent Reports
-        </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {specialistReports.map((report) => (
-            <AgentCard key={report.agentId} report={report} />
-          ))}
-        </div>
+      {/* Agent panels */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        {specialistReports.map((report) => (
+          <SpecialistAgentPanel key={report.agentId} report={report} />
+        ))}
+        <ManagerSummaryPanel analysis={analysis} />
       </div>
 
-      {/* Manager + Communication */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {managerReport && (
-          <AgentCard report={managerReport} defaultExpanded />
-        )}
-        <AgentCommunicationFeed messages={analysis.agentMessages} />
+      {/* Decision analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <DecisionEvolutionChart analysis={analysis} />
+        <CounterfactualChart analysis={analysis} />
       </div>
 
-      {/* CFO financial cards */}
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold text-zinc-300 mb-3 uppercase tracking-wider">
-          Financial Analysis
-        </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <SpendBreakdown categories={analysis.spendCategories} />
-          <RecurringBills bills={analysis.recurringBills} />
-          <SavingsOpportunities
-            opportunities={analysis.savingsOpportunities}
-          />
-        </div>
-      </div>
-
-      {/* Decision layer */}
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold text-zinc-300 mb-3 uppercase tracking-wider">
-          Decision Layer
-        </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-          <ConflictDetection conflicts={analysis.conflicts} />
-          <PolicyValidation checks={analysis.policyChecks} />
-        </div>
-        <DecisionPanel decision={analysis.decision} />
+      {/* Risk & policy */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+        <RiskDriversChart analysis={analysis} />
+        <ReasonCodeChart analysis={analysis} />
+        <PolicyEnginePanel analysis={analysis} />
       </div>
     </div>
   );

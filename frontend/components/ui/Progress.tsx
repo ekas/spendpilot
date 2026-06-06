@@ -23,9 +23,13 @@ export function Progress({
     <div className={cn("w-full", className)}>
       {(label || showValue) && (
         <div className="flex justify-between items-center mb-1.5">
-          {label && <span className="text-xs text-zinc-500">{label}</span>}
+          {label && (
+            <span className="text-xs text-muted-foreground">{label}</span>
+          )}
           {showValue && (
-            <span className={cn("text-xs font-mono font-medium", getScoreColor(value))}>
+            <span
+              className={cn("text-xs font-mono font-medium", getScoreColor(value))}
+            >
               {value}
             </span>
           )}
@@ -33,7 +37,7 @@ export function Progress({
       )}
       <div
         className={cn(
-          "w-full rounded-full bg-zinc-800 overflow-hidden",
+          "w-full rounded-full bg-muted overflow-hidden",
           size === "sm" ? "h-1.5" : "h-2"
         )}
       >
@@ -78,7 +82,7 @@ export function ScoreRing({
           fill="none"
           stroke="currentColor"
           strokeWidth={6}
-          className="text-zinc-800"
+          className="text-muted"
         />
         <circle
           cx={size / 2}
@@ -103,10 +107,14 @@ export function ScoreRing({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className={cn("text-3xl font-bold font-mono", getScoreColor(score))}>
+        <span
+          className={cn("text-3xl font-bold font-mono", getScoreColor(score))}
+        >
           {score}
         </span>
-        {label && <span className="text-xs text-zinc-500 mt-0.5">{label}</span>}
+        {label && (
+          <span className="text-xs text-muted-foreground mt-0.5">{label}</span>
+        )}
       </div>
     </div>
   );

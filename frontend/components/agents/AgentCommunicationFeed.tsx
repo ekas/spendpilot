@@ -32,15 +32,15 @@ export function AgentCommunicationFeed({ messages }: AgentCommunicationFeedProps
           return (
             <div
               key={msg.id}
-              className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-3"
+              className="rounded-lg border border-border bg-surface p-3"
             >
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Icon className="h-3.5 w-3.5 text-zinc-500" />
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className={cn("text-xs font-semibold", getAgentColor(msg.from))}>
                   {getAgentLabel(msg.from)}
                 </span>
-                <span className="text-zinc-700 text-xs">→</span>
-                <span className="text-xs text-zinc-500">
+                <span className="text-muted-foreground/50 text-xs">→</span>
+                <span className="text-xs text-muted-foreground">
                   {msg.to === "broadcast"
                     ? "All Agents"
                     : getAgentLabel(msg.to)}
@@ -49,8 +49,8 @@ export function AgentCommunicationFeed({ messages }: AgentCommunicationFeedProps
                   {config.label}
                 </Badge>
               </div>
-              <p className="text-sm text-zinc-300 leading-relaxed">{msg.content}</p>
-              <p className="text-[10px] text-zinc-600 mt-2 font-mono">
+              <p className="text-sm text-foreground/90 leading-relaxed">{msg.content}</p>
+              <p className="text-[10px] text-muted-foreground/80 mt-2 font-mono">
                 {formatDate(msg.timestamp)}
               </p>
             </div>

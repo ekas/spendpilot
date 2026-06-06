@@ -30,10 +30,10 @@ export function SavingsOpportunities({ opportunities }: SavingsOpportunitiesProp
         {opportunities.map((opp) => (
           <div
             key={opp.id}
-            className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-3"
+            className="rounded-lg border border-border bg-surface p-3"
           >
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-sm font-medium text-zinc-200">
+              <span className="text-sm font-medium text-foreground">
                 {opp.title}
               </span>
               <Badge variant="success" className="ml-auto">
@@ -42,12 +42,12 @@ export function SavingsOpportunities({ opportunities }: SavingsOpportunitiesProp
             </div>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="muted">{opp.category}</Badge>
-              <span className="text-[10px] text-zinc-600 font-mono">
+              <span className="text-[10px] text-muted-foreground/80 font-mono">
                 {(opp.confidence * 100).toFixed(0)}% confidence
               </span>
             </div>
-            <div className="flex items-start gap-1.5 text-xs text-zinc-500">
-              <ArrowRight className="h-3 w-3 mt-0.5 shrink-0 text-zinc-600" />
+            <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <ArrowRight className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground/80" />
               {opp.action}
             </div>
           </div>

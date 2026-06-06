@@ -68,23 +68,23 @@ export function CaseSnapshot({ snapshot }: CaseSnapshotProps) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-800">
+      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
         <div>
-          <p className="text-xs text-zinc-500 mb-1">Monthly Expenses</p>
-          <p className="text-sm font-mono text-zinc-200">
+          <p className="text-xs text-muted-foreground mb-1">Monthly Expenses</p>
+          <p className="text-sm font-mono text-foreground">
             {formatCurrency(snapshot.monthlyExpenses)}
           </p>
         </div>
         <div>
-          <p className="text-xs text-zinc-500 mb-1">Debt-to-Income</p>
-          <p className="text-sm font-mono text-zinc-200">
+          <p className="text-xs text-muted-foreground mb-1">Debt-to-Income</p>
+          <p className="text-sm font-mono text-foreground">
             {formatPercent(snapshot.debtToIncome * 100)}
           </p>
         </div>
       </div>
 
       {snapshot.validationIssues.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-zinc-800 space-y-2">
+        <div className="mt-4 pt-4 border-t border-border space-y-2">
           {snapshot.validationIssues.map((issue, i) => (
             <div key={i} className="flex items-start gap-2 text-xs text-amber-400">
               <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
@@ -111,11 +111,11 @@ function SnapshotMetric({
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-1">
-        <Icon className="h-3 w-3 text-zinc-600" />
-        <p className="text-xs text-zinc-500">{label}</p>
+        <Icon className="h-3 w-3 text-muted-foreground/80" />
+        <p className="text-xs text-muted-foreground">{label}</p>
       </div>
       <p
-        className={`text-sm font-medium text-zinc-200 ${mono ? "font-mono" : ""}`}
+        className={`text-sm font-medium text-foreground ${mono ? "font-mono" : ""}`}
       >
         {value}
       </p>

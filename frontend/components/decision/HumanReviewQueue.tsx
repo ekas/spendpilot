@@ -24,16 +24,23 @@ const priorityConfig = {
 
 const statusConfig = {
   pending: { icon: Clock, color: "text-amber-400" },
-  "in-review": { icon: UserCheck, color: "text-cyan-400" },
+  "in-review": { icon: UserCheck, color: "text-accent" },
   resolved: { icon: CheckCircle2, color: "text-emerald-400" },
 };
 
 interface HumanReviewQueueProps {
   items: HumanReviewItem[];
   onUpdate?: () => void;
+  title?: string;
+  subtitle?: string;
 }
 
-export function HumanReviewQueue({ items, onUpdate }: HumanReviewQueueProps) {
+export function HumanReviewQueue({
+  items,
+  onUpdate,
+  title = "Your Applications",
+  subtitle,
+}: HumanReviewQueueProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -51,12 +58,14 @@ export function HumanReviewQueue({ items, onUpdate }: HumanReviewQueueProps) {
   };
 
   const pending = items.filter((i) => i.status !== "resolved").length;
+  const resolvedSubtitle =
+    subtitle ?? `${items.length} total · ${pending} active`;
 
   return (
     <Card>
       <CardHeader
-        title="Human Review Queue"
-        subtitle={`${pending} cases awaiting review`}
+        title={title}
+        subtitle={resolvedSubtitle}
         action={
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
             <UserCheck className="h-4 w-4 text-orange-400" />
@@ -77,8 +86,8 @@ export function HumanReviewQueue({ items, onUpdate }: HumanReviewQueueProps) {
               className={cn(
                 "rounded-lg border transition-colors cursor-pointer",
                 isSelected
-                  ? "border-cyan-500/40 bg-cyan-500/5"
-                  : "border-zinc-800 bg-zinc-900/30 hover:border-zinc-700"
+                  ? "border-accent-border bg-accent-muted"
+                  : "border-border bg-surface hover:border-border"
               )}
               onClick={() =>
                 setSelectedId(isSelected ? null : item.id)
@@ -87,10 +96,10 @@ export function HumanReviewQueue({ items, onUpdate }: HumanReviewQueueProps) {
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <StatusIcon className={cn("h-4 w-4", status.color)} />
-                  <span className="text-sm font-medium text-zinc-200">
+                  <span className="text-sm font-medium text-foreground">
                     {item.applicantName}
                   </span>
-                  <span className="text-xs text-zinc-600 font-mono">
+                  <span className="text-xs text-muted-foreground/80 font-mono">
                     {item.caseId}
                   </span>
                   <Badge variant={priority.variant} className="ml-auto">
@@ -98,8 +107,8 @@ export function HumanReviewQueue({ items, onUpdate }: HumanReviewQueueProps) {
                   </Badge>
                   <RiskBadge level={item.riskLevel} />
                 </div>
-                <p className="text-xs text-zinc-500 mb-2">{item.reason}</p>
-                <div className="flex items-center gap-4 text-[10px] text-zinc-600">
+                <p className="text-xs text-muted-foreground mb-2">{item.reason}</p>
+                <div className="flex items-center gap-4 text-[10px] text-muted-foreground/80">
                   <span>Score: {item.credibilityScore}</span>
                   <span>{formatDate(item.submittedAt)}</span>
                   {item.assignedTo && (
@@ -109,7 +118,7 @@ export function HumanReviewQueue({ items, onUpdate }: HumanReviewQueueProps) {
               </div>
 
               {isSelected && item.status !== "resolved" && (
-                <div className="border-t border-zinc-800 px-4 py-3 flex gap-2">
+                <div className="border-t border-border px-4 py-3 flex gap-2">
                   <Button
                     variant="success"
                     size="sm"
@@ -160,7 +169,7 @@ export function HumanReviewQueue({ items, onUpdate }: HumanReviewQueueProps) {
               )}
 
               {item.status === "resolved" && (
-                <div className="border-t border-zinc-800 px-4 py-2 flex items-center gap-2 text-xs text-emerald-400">
+                <div className="border-t border-border px-4 py-2 flex items-center gap-2 text-xs text-emerald-400">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Resolved by {item.assignedTo}
                 </div>

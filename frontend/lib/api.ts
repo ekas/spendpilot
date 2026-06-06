@@ -1,80 +1,99 @@
 import { MOCK_ANALYSIS, MOCK_REVIEW_QUEUE } from "./mock-data";
 import type { AnalysisResult, HumanReviewItem, UploadedDocument } from "./types";
-import { delay } from "./utils";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+
+function apiUrl(path: string): string {
+  return API_BASE ? `${API_BASE}${path}` : path;
+}
+
+export interface ApplicantInput {
+  name?: string;
+  monthly_income?: number;
+  monthly_expenses?: number;
+  requested_amount?: number;
+  existing_debt?: number;
+  credit_utilization?: number;
+  delinquencies_12m?: number;
+  employment_months?: number;
+  overdrafts_90d?: number;
+  income_verified?: boolean;
+}
 
 export async function uploadDocuments(
   files: File[]
 ): Promise<UploadedDocument[]> {
-  if (API_BASE) {
-    const formData = new FormData();
-    files.forEach((f) => formData.append("files", f));
-    const res = await fetch(`${API_BASE}/api/upload`, {
-      method: "POST",
-      body: formData,
-    });
-    if (!res.ok) throw new Error("Upload failed");
-    return res.json();
-  }
+  const formData = new FormData();
+  files.forEach((f) => formData.append("files", f));
 
-  await delay(1500);
-  return files.map((file, i) => ({
-    id: `doc-${Date.now()}-${i}`,
-    name: file.name,
-    type: inferDocumentType(file.name),
-    size: file.size,
-    uploadedAt: new Date().toISOString(),
-    status: "ready" as const,
-  }));
+  const res = await fetch(apiUrl("/api/upload"), {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error("Upload failed");
+  const data = await res.json();
+  return data.documents ?? data;
 }
 
 export async function runAnalysis(
-  documents: UploadedDocument[]
+  files: File[],
+  applicant?: ApplicantInput
 ): Promise<AnalysisResult> {
-  if (API_BASE) {
-    const res = await fetch(`${API_BASE}/api/analyze`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ documents }),
-    });
-    if (!res.ok) throw new Error("Analysis failed");
-    return res.json();
+  const formData = new FormData();
+  files.forEach((f) => formData.append("files", f));
+
+  if (applicant?.name) formData.append("name", applicant.name);
+  if (applicant?.monthly_income !== undefined)
+    formData.append("monthly_income", String(applicant.monthly_income));
+  if (applicant?.monthly_expenses !== undefined)
+    formData.append("monthly_expenses", String(applicant.monthly_expenses));
+
+  const res = await fetch(apiUrl("/api/analyze"), {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Analysis failed");
   }
 
-  await delay(3000);
-  return {
-    ...MOCK_ANALYSIS,
-    snapshot: {
-      ...MOCK_ANALYSIS.snapshot,
-      documents,
-      applicationDate: new Date().toISOString(),
-    },
-    caseId: `CASE-${Date.now().toString(36).toUpperCase()}`,
-    pipelineStage: "complete",
-  };
+  return res.json();
+}
+
+export async function createCaseWithUpload(
+  files: File[],
+  applicant: ApplicantInput
+): Promise<unknown> {
+  const formData = new FormData();
+  files.forEach((f) => formData.append("files", f));
+
+  Object.entries(applicant).forEach(([key, value]) => {
+    if (value !== undefined) formData.append(key, String(value));
+  });
+
+  const res = await fetch(apiUrl("/api/cases/create-with-upload"), {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error("Case creation failed");
+  return res.json();
 }
 
 export async function getAnalysis(caseId: string): Promise<AnalysisResult> {
-  if (API_BASE) {
-    const res = await fetch(`${API_BASE}/api/cases/${caseId}`);
-    if (!res.ok) throw new Error("Case not found");
-    return res.json();
-  }
-
-  await delay(500);
-  return { ...MOCK_ANALYSIS, caseId };
+  const res = await fetch(
+    apiUrl(`/api/cases/${caseId}?format=analysis`)
+  );
+  if (!res.ok) throw new Error("Case not found");
+  return res.json();
 }
 
 export async function getReviewQueue(): Promise<HumanReviewItem[]> {
-  if (API_BASE) {
-    const res = await fetch(`${API_BASE}/api/review-queue`);
-    if (!res.ok) throw new Error("Failed to fetch review queue");
-    return res.json();
-  }
-
-  await delay(300);
-  return MOCK_REVIEW_QUEUE;
+  const res = await fetch(apiUrl("/api/review-queue"));
+  if (!res.ok) throw new Error("Failed to fetch review queue");
+  return res.json();
 }
 
 export async function submitReviewDecision(
@@ -82,28 +101,54 @@ export async function submitReviewDecision(
   decision: "approve" | "challenge" | "override",
   notes?: string
 ): Promise<void> {
-  if (API_BASE) {
-    const res = await fetch(`${API_BASE}/api/review-queue/${reviewId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision, notes }),
-    });
-    if (!res.ok) throw new Error("Failed to submit decision");
-    return;
-  }
-
-  await delay(800);
-  console.log("Review decision submitted:", { reviewId, decision, notes });
+  const res = await fetch(apiUrl(`/api/review-queue/${reviewId}`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ decision, notes }),
+  });
+  if (!res.ok) throw new Error("Failed to submit decision");
 }
 
-function inferDocumentType(filename: string) {
-  const lower = filename.toLowerCase();
-  if (lower.includes("invoice")) return "invoice" as const;
-  if (lower.includes("quote")) return "quote" as const;
-  if (lower.includes("contract")) return "contract" as const;
-  if (lower.includes("bank") || lower.includes("statement"))
-    return "bank-statement" as const;
-  if (lower.endsWith(".csv") || lower.includes("spend"))
-    return "spend-export" as const;
-  return "other" as const;
+export async function listCases(): Promise<unknown[]> {
+  const res = await fetch(apiUrl("/api/cases"));
+  if (!res.ok) throw new Error("Failed to list cases");
+  return res.json();
+}
+
+export async function loadSampleCases(): Promise<unknown[]> {
+  const res = await fetch(apiUrl("/api/cases/samples"));
+  if (!res.ok) throw new Error("Failed to load samples");
+  return res.json();
+}
+
+export async function comparePeriods(params: {
+  period_a_start: string;
+  period_a_end: string;
+  period_b_start: string;
+  period_b_end: string;
+}): Promise<unknown> {
+  const qs = new URLSearchParams(params);
+  const res = await fetch(apiUrl(`/api/cases/compare-periods?${qs}`));
+  if (!res.ok) throw new Error("Failed to compare periods");
+  return res.json();
+}
+
+export async function checkHealth(): Promise<{
+  status: string;
+  orm?: string;
+  database?: string;
+  storage?: string;
+}> {
+  const res = await fetch(apiUrl("/api/health"));
+  if (!res.ok) throw new Error("API unavailable");
+  return res.json();
+}
+
+/** @deprecated Use runAnalysis with files — kept for offline demo */
+export function getMockAnalysis(): AnalysisResult {
+  return MOCK_ANALYSIS;
+}
+
+export function getMockReviewQueue(): HumanReviewItem[] {
+  return MOCK_REVIEW_QUEUE;
 }
