@@ -80,6 +80,8 @@ class PolicyEngine:
             decision_id=f"decision_{uuid4().hex}",
             case_id=manager_report.case_id,
             snapshot_id=manager_report.snapshot_id,
+            analysis_round_id=manager_report.analysis_round_id,
+            feedback_ids=manager_report.feedback_ids,
             policy_version=self.policy_version,
             action=action,
             reason_codes=self._decision_reasons(
@@ -130,6 +132,16 @@ class PolicyEngine:
                 PolicyRuleHit(
                     rule_id="LOW_MODEL_CONFIDENCE",
                     description="A specialist confidence is below policy threshold.",
+                )
+            )
+        if manager_report.feedback_ids:
+            rules.append(
+                PolicyRuleHit(
+                    rule_id="FEEDBACK_REANALYSIS_REQUIRES_REVIEW",
+                    description=(
+                        "A feedback-triggered analysis round requires an "
+                        "authorized human resolution."
+                    ),
                 )
             )
         return rules
